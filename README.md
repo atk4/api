@@ -208,3 +208,116 @@ Similarly to Agile UI, the application for API will catch exceptions raised.
 $app->?
 ```
 
+### System support and global scoping
+
+Agile Data supports global scoping, so you can add additional hook that would affect creation of all the models and add some further conditioning. That's useful based off the Auth response:
+
+``` php
+$user_id = $app->authUser('/**', new User($db));
+
+$db->addHook('afterAdd', function($o, $e) use ($user_id) {
+    if ($e->hasElement('user_id')) {
+        $e->addCondition('user_id', $user_id);
+    }
+})
+
+```
+
+### Mapping to file-system
+
+``` php
+$app->map('/**', function($path){ 
+    // convert path to file
+    // load file
+    // create class instance
+    // call method of that class
+});
+```
+
+
+
+### Optional Arguments
+
+Agile API supports various get arguments.
+
+-   `?sort=name,-age` specify columns to sort by. 
+-   `?q=search`, will attempt to perform full-text search by phrase. (if supported by persistence)
+-   `?condition[name]=value`, conditioning, but can also use `?name=value`
+-   `?limit=20`, return only 20 results at a time.
+-   `?skip=20`, skip first 20 results.
+-   `?only=name,surname` specify onlyFields
+-   `?ad={transformation}`, apply Agile Data transformation
+
+Handling of those arguments happens inside function `args()`. It's passed in a Model, so it will look at the GET arguments and perform the necessary changes. 
+
+``` php
+function args(\atk4\data\Model $m) {
+    if ($_GET['sort']) {
+        $m->sortBy($_GET['sort']);
+    }
+  
+    if ($_GET['condition']) {
+    	foreach($_GET['condition'] as $key=>$val) {
+            $m->addCondition($key, $val);
+        }
+    }
+  
+    if ($_GET['limit'] || $_GET['skip']) {
+        $m->setLimit($_GET['limit']?:null, $_GET['skip']?:null);
+    }
+  
+    // etc. etc...
+}
+```
+
+### Other points
+
+Agile API is JSON only. You might be able to add XML output, but why.
+
+Agile API does not use envelope. Response data will be "[]" for empty result. If there is a problem with response, you'll get it through status code, in which case output will change.
+
+Agile API does not support HATEOAS. Technically you should be able to add support for it, but it would require a more complex mapping or extra code. We prefer to keep things simple.
+
+Agile API will pretty-print JSON by default, so make sure "gzip" is enabled.
+
+Agile API will accept either raw JSON or Form encoded input, but examples will always use JSON
+
+Agile API does not use "pagination" instead "limit" and "skip" values. You can introduce pages if you wish.
+
+Deep-loading resources is something that you can add. For instance if you load "Invoice" it may contain "lines" array containing list of hashes. Documentation will be provided on how to make this possible. There will also get argument to instruct if deep-loading is needed.
+
+Errors and exceptions will contain "error", "message" and "args" keys. Optional key "raised_by" may contain another object with same keys if said error was raised by another error. Another possibility is "description" field.
+
+(see http://www.vinaysahni.com/best-practices-for-a-pragmatic-restful-api)
+
+https://www.reddit.com/r/PHP/comments/32tbxs/looking_for_php_rest_api_framework/
+
+testing / behat: http://restler3.luracast.com/examples/_001_helloworld/readme.html
+
+### URL patterns
+
+Here are some examples
+
+-   `/user/:id`  matches /user/123 , /user/123/ , /user/abc/ but won't match /user/123/x
+-   `/user/:` same as above
+-   `/user/:/:` matches /user/123/321 but won't match /user/123
+-   `/user/*/:` matches /user/blah/123 but will ignore blah
+-   `/user/**/:` incorrect, as `**` must be last.
+-   `/user/:/**` matches /user/123/blah and /user/123/foo/blah and /user/123
+-   `/user/:id/:action?` optional parameter. If unspecified will be null
+
+### Route Groups
+
+It's possible to divert route group to a different App.
+
+``` php
+$app = new \atk4\app\Api();
+
+$app->group('/user/**', function($app2) {
+   $app2->get('/test', function() {
+     return 'yes';
+   });
+});
+```
+
+This is most 
