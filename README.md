@@ -21,7 +21,7 @@ To set up your API, simply create new RestAPI class instance and define routes. 
 
 ``` php
 require 'vendor/autoload.php';
-$app = new \atk4\api\RestAPI.php;
+$app = new \atk4\api\Api();
 
 $db = \atk4\data\Persistence::connect($DSN);
 
