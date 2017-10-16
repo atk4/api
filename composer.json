@@ -1,0 +1,34 @@
+{
+    "name": "atk4/api",
+    "type": "library",
+    "description": "Agile API - Extensible API server in PHP for Agile Data",
+    "keywords": ["framework", "api", "rest", "restapi", "atk", "agile data", "data", "json", "toolkit", "agile"],
+    "homepage": "https://github.com/atk4/api",
+    "license": "MIT",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "authors": [
+        {
+            "name": "Romans Malinovskis",
+            "email": "romans@agiletoolkit.org",
+            "homepage": "https://nearly.guru/"
+        }
+    ],
+    "require": {
+        "php": ">=5.6.0",
+        "atk4/data": "dev-develop"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "<6",
+        "atk4/schema": "dev-develop",
+        "codeclimate/php-test-reporter": "*"
+    },
+    "autoload": {
+        "psr-4": {"atk4\\api\\":"src/"}
+    },
+    "autoload-dev": {
+        "psr-4": {
+          "atk4\\api\\tests\\":"tests/"
+        }
+    }
+}
