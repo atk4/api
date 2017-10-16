@@ -30,9 +30,9 @@ $app->get('/', function() {
     return 'This worked!';
 });
 
-// Getting access to raw post
-$app->post('/stats/:id', function($id)) {
-    return ['Received POST', 'id'=>$id, 'post_data'=>file_get_contents('php://input')];
+// Getting access to POST data
+$app->post('/stats/:id', function($id, $data) {
+   return ['Received POST', 'id'=>$id, 'post_data'=>$data] 
 });
 ```
 
@@ -226,11 +226,20 @@ $db->addHook('afterAdd', function($o, $e) use ($user_id) {
 ### Mapping to file-system
 
 ``` php
-$app->map('/**', function($path){ 
+$app->map('/:resource/**', function(resource) use($app) {
+  
+    // convert user-credit to UserCredit
+    $class = preg_replace('/[^a-zA-Z]/', '', ucwords($resoprce));
+  
+  	$object = $app->factory($class, null, 'Interface'); // Interface\UserCredit.php
+  
+  	return [$object, $app->method]; 
     // convert path to file
     // load file
     // create class instance
     // call method of that class
+  
+    // TODO: think of some logical example here!!
 });
 ```
 
@@ -320,4 +329,4 @@ $app->group('/user/**', function($app2) {
 });
 ```
 
-This is most 
+You can also divert 
