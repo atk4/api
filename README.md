@@ -16,10 +16,10 @@ End-to-end implementation for your REST API. Provides a very simple means for yo
 
 Agile API is in development but the following features are planned:
 
--   [ ] Simple to use.
+-   [x] Simple to use.
 
 
--   [ ] Model routing. Provide end-points by associating them with models.
+-   [x] Model routing. Provide end-points by associating them with models.
 -   [ ] Global authentication. Provide authentication strategy for entire framework.
 -   [ ] Support for rate limits. Per-account, per-IP counters which can be stored in MemCache or Redis.
 -   [ ] Deep logging, integrated with data persistence. Not only stores the request, but what data was affected inside persistence.
