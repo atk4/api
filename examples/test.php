@@ -1,4 +1,5 @@
 <?php
+
 include '../vendor/autoload.php';
 
 $api = new \atk4\api\Api();
@@ -51,8 +52,11 @@ class Country extends \atk4\data\Model
 session_start();
 $db = new \atk4\data\Persistence_SQL('mysql:dbname=atk4;host=localhost', 'root', 'root');
 
-$api->get('/ping/', function(){ return 'Hello, World'; });
-$api->get('/ping/:hello', function($hello){ return "Hello, $hello"; });
+$api->get('/ping/', function () {
+    return 'Hello, World';
+});
+$api->get('/ping/:hello', function ($hello) {
+    return "Hello, $hello";
+});
 
 $api->rest('/client', new Country($db));
-

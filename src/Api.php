@@ -1,20 +1,19 @@
 <?php
+
 namespace atk4\api;
 
 class Api
 {
-
     public $request;
     public $response;
 
     public $requestData;
 
     /**
-     * Reads everything off globals
+     * Reads everything off globals.
      */
-    function __construct()
+    public function __construct()
     {
-
         $this->request = \Zend\Diactoros\ServerRequestFactory::fromGlobals();
         $this->path = $this->request->getUri()->getPath();
 
@@ -30,15 +29,15 @@ class Api
 
         $ct = $this->request->getHeader('Content-Type');
 
-        if ($ct && strtolower($ct[0])=='application/json') {
+        if ($ct && strtolower($ct[0]) == 'application/json') {
             $this->requestData = json_decode($this->request->getBody()->getContents(), true);
         } else {
             $this->requestData = $this->request->getParsedBody();
         }
     }
 
-    function match($pattern, $arg = null) {
-
+    public function match($pattern, $arg = null)
+    {
         $path = explode('/', rtrim($this->path, '/'));
         $pattern = explode('/', rtrim($pattern, '/'));
 
@@ -46,7 +45,6 @@ class Api
 
         $sanity = 50;
         while ($path || $pattern) {
-
             $p = array_shift($path);
             $r = array_shift($pattern);
 
@@ -55,10 +53,14 @@ class Api
             }
 
             // must make sure both match
-            if ($p === $r) continue;
+            if ($p === $r) {
+                continue;
+            }
 
             // pattern 'r' accepts anything
-            if ($r == '*' && strlen($p)) continue;
+            if ($r == '*' && strlen($p)) {
+                continue;
+            }
 
             if ($r === null || $r === '') {
                 return false;
@@ -70,7 +72,9 @@ class Api
             }
 
             // good until the end
-            if ($r == '**' ) break;
+            if ($r == '**') {
+                break;
+            }
 
             return false;
 
@@ -85,7 +89,7 @@ class Api
 
         try {
             $ret = call_user_func_array($arg, $vars);
-        } catch(\Exception $e) {
+        } catch (\Exception $e) {
             $this->caughtException($e);
         }
 
@@ -95,7 +99,7 @@ class Api
 
         if ($ret !== null) {
             if (!$this->response) {
-                $this->response = 
+                $this->response =
                     new \Zend\Diactoros\Response\JsonResponse(
                         $ret,
                         200,
@@ -130,6 +134,7 @@ class Api
             return $this->match($pattern, $arg);
         }
     }
+
     public function delete($pattern, $arg = null)
     {
         if ($this->request->getMethod() === 'DELETE') {
@@ -139,43 +144,43 @@ class Api
 
     public function rest($pattern, $model = null)
     {
-        $this->get($pattern, function() use($model) {
+        $this->get($pattern, function () use ($model) {
             return $model;
         });
 
-        $this->get($pattern.'/:id', function($id) use($model) {
+        $this->get($pattern.'/:id', function ($id) use ($model) {
             return $model->load($id)->get();
         });
 
-        $this->patch($pattern.'/:id', function($id) use($model) {
+        $this->patch($pattern.'/:id', function ($id) use ($model) {
             return $model->load($id)->set($this->requestData)->save()->get();
         });
-        $this->post($pattern.'/:id', function($id) use($model) {
+        $this->post($pattern.'/:id', function ($id) use ($model) {
             return $model->load($id)->set($this->requestData)->save()->get();
         });
-        $this->delete($pattern.'/:id', function($id) use($model) {
+        $this->delete($pattern.'/:id', function ($id) use ($model) {
             return !$model->load($id)->delete()->loaded();
         });
 
-        $this->post($pattern.'/', function() use($model) {
+        $this->post($pattern.'/', function () use ($model) {
             return $model->set($this->requestData)->save()->get();
         });
     }
 
-    function caughtException(\Exception $e)
+    public function caughtException(\Exception $e)
     {
         $params = [];
         foreach ($e->getParams() as $key => $val) {
-            $params[$key]=$e->toString($val);
+            $params[$key] = $e->toString($val);
         }
 
-        $this->response = 
+        $this->response =
             new \Zend\Diactoros\Response\JsonResponse(
                 [
-                    'error'=>[
-                        'message'=>$e->getMessage(), 
-                        'args'=>$params,
-                    ]
+                    'error'=> [
+                        'message'=> $e->getMessage(),
+                        'args'   => $params,
+                    ],
                 ],
                 $e->getCode() ?: 500,
                 [],

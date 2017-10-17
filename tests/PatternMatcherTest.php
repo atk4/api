@@ -5,13 +5,14 @@ namespace atk4\api\tests;
 class PatternMatcherTest extends \atk4\core\PHPUnit_AgileTestCase
 {
     public $api;
+
     public function setUp()
     {
         $this->api = new \atk4\api\Api();
     }
 
     public function assertMatch($pattern, $request)
-    { 
+    {
         $this->api->path = $request;
         $this->assertTrue($this->api->match($pattern));
     }
