@@ -2,9 +2,6 @@
 
 namespace atk4\api\tests;
 
-
-
-
 class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
 {
     public $api;
@@ -16,7 +13,6 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
 
     public function assertRequest($response, $method, $uri = '/', $data = null)
     {
-
         $request = new \Zend\Diactoros\Request(
             'http://localhost'.$uri,
             $method,
@@ -26,7 +22,7 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
             ]
         );
 
-        if($data !== null) {
+        if ($data !== null) {
             $request->getBody()->write(json_encode($data));
         }
     }
@@ -50,7 +46,7 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
             ]
         );
 
-        if($data !== null) {
+        if ($data !== null) {
             $request->getBody()->write(json_encode($data));
         }
 
@@ -63,18 +59,16 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
         $this->assertEquals($response, $ret);
     }
 
-
     /**
-     * Simmulate a request and validate a response
+     * Simmulate a request and validate a response.
      */
-    public function assertReq($response, $handler, $method='GET', $data = null)
+    public function assertReq($response, $handler, $method = 'GET', $data = null)
     {
         $uri = '/request';
 
         $m = strtolower($method);
-        $this->assertApi($response, function($api) use($handler, $uri, $m) {
+        $this->assertApi($response, function ($api) use ($handler, $uri, $m) {
             $api->$m($uri, $handler);
         }, $uri, $method);
     }
-
 }
