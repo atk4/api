@@ -9,12 +9,14 @@ class Api
 
     public $requestData;
 
+    public $emitter;
+
     /**
      * Reads everything off globals.
      */
-    public function __construct()
+    public function __construct($request = null)
     {
-        $this->request = \Zend\Diactoros\ServerRequestFactory::fromGlobals();
+        $this->request = $request ?: \Zend\Diactoros\ServerRequestFactory::fromGlobals();
         $this->path = $this->request->getUri()->getPath();
 
         if (isset($_SERVER['SCRIPT_NAME']) && isset($_SERVER['REQUEST_URI'])) {
@@ -34,6 +36,9 @@ class Api
         } else {
             $this->requestData = $this->request->getParsedBody();
         }
+
+        // This is how we will send responses
+        $this->emitter = new \Zend\Diactoros\Response\SapiEmitter();
     }
 
     public function match($pattern, $arg = null)
@@ -108,9 +113,13 @@ class Api
                     );
             }
 
-            $emitter = new \Zend\Diactoros\Response\SapiEmitter();
-            $emitter->emit($this->response);
-            exit;
+            if ($this->emitter) {
+                // cannot do anything about it
+                $emitter->emit($this->response);
+            }
+
+            // no emitter
+            return $ret;
         }
     }
 
