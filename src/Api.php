@@ -115,7 +115,7 @@ class Api
 
             if ($this->emitter) {
                 // cannot do anything about it
-                $emitter->emit($this->response);
+                $this->emitter->emit($this->response);
             }
 
             // no emitter
