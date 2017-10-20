@@ -2,29 +2,42 @@
 
 namespace atk4\api;
 
+/**
+ * Main API class.
+ */
 class Api
 {
+    // @var \Zend\Diactoros\ServerRequest Request object
     public $request;
+
+    // @var \Zend\Diactoros\Response\JsonResponse Response object
     public $response;
 
-    public $requestData;
+    // @var \Zend\Diactoros\Response\SapiEmitter Emitter object
+    protected $emitter;
 
-    public $emitter;
+    // @var string
+    protected $requestData;
+
+    // @var string Request path
+    protected $path;
 
     /**
      * Reads everything off globals.
+     *
+     * @param \Zend\Diactoros\ServerRequest $request
      */
     public function __construct($request = null)
     {
         $this->request = $request ?: \Zend\Diactoros\ServerRequestFactory::fromGlobals();
         $this->path = $this->request->getUri()->getPath();
 
-        if (isset($_SERVER['SCRIPT_NAME']) && isset($_SERVER['REQUEST_URI'])) {
+        if (isset($_SERVER['SCRIPT_NAME'], $_SERVER['REQUEST_URI'])) {
             // both script name and request uri are supplied, possibly
             // we would want to extract path relative from script location
 
-            $path = $_SERVER['REQUEST_URI'];
             $script = $_SERVER['SCRIPT_NAME'];
+            $path = $_SERVER['REQUEST_URI'];
 
             $this->path = str_replace($script, '', $path);
         }
@@ -41,14 +54,23 @@ class Api
         $this->emitter = new \Zend\Diactoros\Response\SapiEmitter();
     }
 
-    public function match($pattern, $arg = null)
+    /**
+     * Do pattern matching.
+     *
+     * @param string   $pattern
+     * @param callable $callable
+     *
+     * @return mixed
+     */
+    public function match($pattern, $callable = null)
     {
         $path = explode('/', rtrim($this->path, '/'));
         $pattern = explode('/', rtrim($pattern, '/'));
 
         $vars = [];
 
-        $sanity = 50;
+        // $sanity = 50; unused variable
+
         while ($path || $pattern) {
             $p = array_shift($path);
             $r = array_shift($pattern);
@@ -83,25 +105,32 @@ class Api
 
             return false;
 
+            /* never used code
             if (!$sanity--) {
                 throw new Exception(['Insanity while matching']);
             }
+            */
         }
 
-        if ($arg === null) {
+        // if no callable function set - just say that it matches
+        if ($callable === null) {
             return true;
         }
 
+        // try to call callable function
         try {
-            $ret = call_user_func_array($arg, $vars);
+            $ret = call_user_func_array($callable, $vars);
         } catch (\Exception $e) {
             $this->caughtException($e);
         }
 
+        // if callable function returns agile data model, then export it
+        // this is important for REST API implementation
         if ($ret instanceof \atk4\data\Model) {
             $ret = $ret->export();
         }
 
+        // create response object
         if ($ret !== null) {
             if (!$this->response) {
                 $this->response =
@@ -118,39 +147,79 @@ class Api
                 $this->emitter->emit($this->response);
             }
 
-            // no emitter
+            // no emitter (is that possible at all ?)
             return $ret;
         }
     }
 
-    public function get($pattern, $arg = null)
+    /**
+     * Do GET pattern matching.
+     *
+     * @param string   $pattern
+     * @param callable $callable
+     *
+     * @return mixed
+     */
+    public function get($pattern, $callable = null)
     {
         if ($this->request->getMethod() === 'GET') {
-            return $this->match($pattern, $arg);
+            return $this->match($pattern, $callable);
         }
     }
 
-    public function post($pattern, $arg = null)
+    /**
+     * Do POST pattern matching.
+     *
+     * @param string   $pattern
+     * @param callable $callable
+     *
+     * @return mixed
+     */
+    public function post($pattern, $callable = null)
     {
         if ($this->request->getMethod() === 'POST') {
-            return $this->match($pattern, $arg);
+            return $this->match($pattern, $callable);
         }
     }
 
-    public function patch($pattern, $arg = null)
+    /**
+     * Do PATCH pattern matching.
+     *
+     * @param string   $pattern
+     * @param callable $callable
+     *
+     * @return mixed
+     */
+    public function patch($pattern, $callable = null)
     {
         if ($this->request->getMethod() === 'PATCH') {
-            return $this->match($pattern, $arg);
+            return $this->match($pattern, $callable);
         }
     }
 
-    public function delete($pattern, $arg = null)
+    /**
+     * Do DELETE pattern matching.
+     *
+     * @param string   $pattern
+     * @param callable $callable
+     *
+     * @return mixed
+     */
+    public function delete($pattern, $callable = null)
     {
         if ($this->request->getMethod() === 'DELETE') {
-            return $this->match($pattern, $arg);
+            return $this->match($pattern, $callable);
         }
     }
 
+    /**
+     * Implement REST pattern matching.
+     *
+     * @param string           $pattern
+     * @param \atk4\data\Model $model
+     *
+     * @return mixed
+     */
     public function rest($pattern, $model = null)
     {
         $this->get($pattern, function () use ($model) {
@@ -176,6 +245,11 @@ class Api
         });
     }
 
+    /**
+     * Our own exception handling.
+     *
+     * @param \Exception $e
+     */
     public function caughtException(\Exception $e)
     {
         $params = [];
