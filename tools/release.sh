@@ -2,7 +2,7 @@
 
 set -e
 
-product='data'
+product='api'
 
 
 check=$(git symbolic-ref HEAD | cut -d / -f3)
@@ -50,10 +50,10 @@ done
 open "https://github.com/atk4/$product/compare/$prev_version...develop"
 
 # Update dependency versions
-sed -i "" -e '/atk4\/schema/s/dev-develop/\*/' composer.json # workaround composers inability to change both requries simultaniously
-composer require atk4/core atk4/dsql
+sed -i "" -e '/atk4\/data/s/dev-develop/\*/' composer.json # workaround composers inability to change both requries simultaniously
 
-composer update
+composer update --no-dev
+composer require atk4/data
 ./vendor/phpunit/phpunit/phpunit  --no-coverage
 
 echo "Press enter to publish the release"
