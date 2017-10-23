@@ -9,8 +9,64 @@
 [![License](https://poser.pugx.org/atk4/api/license)](https://packagist.org/packages/atk4/api)
 [![GitHub release](https://img.shields.io/github/release/atk4/api.svg?maxAge=2592000)](https://packagist.org/packages/atk4/api)
 
+End-to-end implementation for your RESTful API and RPC. Provides a very simple means for you to define API end-points for the application that already uses [Agile Data](https://github.com/atk4/data).
 
-End-to-end implementation for your REST API. Provides a very simple means for you to define API end-points for the application that already uses [Agile Data](https://github.com/atk4/data).
+## 1. Simple To Use
+
+Agile API strives to be very simple and work out of the box. Below is a minimal code to get your basic API going, put that into `v1.php` file then invoke `composer require atk4/api` :
+
+``` php
+include 'vendor/autoload.php';
+
+$api = new \atk4\api\Api();
+
+// Simple handling of GET request through a callback.
+$api->get('/ping', function() {
+   return 'Pong'; 
+});
+
+// Methods can accept arguments, and everything is type-safe.
+$api->get('/hello/:name', function (name) {
+    return "Hello, $name";
+});
+```
+
+## 2. Agile Data Integration
+
+[Agile Data](https://github.com/atk4/data) is a data persistence framework. In simple terms, you can use Agile Data to create your business models (entities) and interact with the database. Agile API is designed to be a perfect integration if you are have already defined classes and persistence in Agile Data. Next code assumes you have `Model Country` and `Persistence $db`:
+
+``` php
+$api->rest('/countries', new Country($db));
+```
+
+This creates a standard standard-compliant RESTful interface for interfacing the client model:
+
+-   `GET /countries` responds with list of all Country records from $db.
+-   `POST /countries` adds a new Country reading data from Form data or JSON in POST body.
+-   `GET /countries/123` loads client with specified ID.
+-   `PATCH /countries/123` with some Form data or JSON will update existing Country.
+-   `DELETE /countries/123` will delete a record.
+
+Through Agile UI you may add conditions, limits and more. Also second argument can be a call-back:
+
+``` php
+$api->rest('/countries', function() use($db) {
+  $c = new Country($db));
+  $c->addCondition('is_eu', true);
+  $c->setLimit(20);
+  return $c;
+});
+```
+
+Field types, data conversions, validation and hooks can all be defined through Agile Data, making the API layer very transparent and simple. If you attempt to load non-existant record, API will respond with 404. Other errors will be properly mapped to the API codes or fallback to 500.
+
+
+
+# Work in progress
+
+Agile UI is still a work in progress. This readme will be further updated to reflect a current features.
+
+
 
 ## Planned Features
 
