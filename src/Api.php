@@ -7,20 +7,20 @@ namespace atk4\api;
  */
 class Api
 {
-    // @var \Zend\Diactoros\ServerRequest Request object
+    /** @var \Zend\Diactoros\ServerRequest Request object */
     public $request;
 
-    // @var \Zend\Diactoros\Response\JsonResponse Response object
+    /** @var \Zend\Diactoros\Response\JsonResponse Response object */
     public $response;
 
-    // @var \Zend\Diactoros\Response\SapiEmitter Emitter object
-    protected $emitter;
+    /** @var \Zend\Diactoros\Response\SapiEmitter Emitter object */
+    public $emitter;
 
-    // @var string
+    /** @var string */
     protected $requestData;
 
-    // @var string Request path
-    protected $path;
+    /** @var string Request path */
+    public $path;
 
     /**
      * Reads everything off globals.
@@ -69,8 +69,6 @@ class Api
 
         $vars = [];
 
-        // $sanity = 50; unused variable
-
         while ($path || $pattern) {
             $p = array_shift($path);
             $r = array_shift($pattern);
@@ -104,12 +102,6 @@ class Api
             }
 
             return false;
-
-            /* never used code
-            if (!$sanity--) {
-                throw new Exception(['Insanity while matching']);
-            }
-            */
         }
 
         // if no callable function set - just say that it matches
@@ -240,7 +232,7 @@ class Api
             return !$model->load($id)->delete()->loaded();
         });
 
-        $this->post($pattern.'/', function () use ($model) {
+        $this->post($pattern, function () use ($model) {
             return $model->set($this->requestData)->save()->get();
         });
     }
