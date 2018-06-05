@@ -62,6 +62,7 @@ class Api
      * @return bool
      */
     protected $_vars;
+
     public function match($pattern)
     {
         $path = explode('/', rtrim($this->path, '/'));
