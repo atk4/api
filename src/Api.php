@@ -73,30 +73,33 @@ class Api
             $p = array_shift($path);
             $r = array_shift($pattern);
 
+            // if path ends and there is nothing in pattern (use //) then continue
             if ($p === null && $r === '') {
                 continue;
             }
 
-            // must make sure both match
+            // if both match, then continue
             if ($p === $r) {
                 continue;
             }
 
-            // pattern 'r' accepts anything
+            // pattern '*' accepts anything
             if ($r == '*' && strlen($p)) {
                 continue;
             }
 
+            // if pattern ends, but there is still something in path, then don't match
             if ($r === null || $r === '') {
                 return false;
             }
 
+            // parameters always start with ':', save in $vars and continue
             if ($r[0] == ':' && strlen($p)) {
                 $vars[] = $p;
                 continue;
             }
 
-            // good until the end
+            // pattern '**' = good until the end
             if ($r == '**') {
                 break;
             }
@@ -206,33 +209,81 @@ class Api
     /**
      * Implement REST pattern matching.
      *
-     * @param string           $pattern
-     * @param \atk4\data\Model $model
+     * @param string                    $pattern
+     * @param \atk4\data\Model|callable $model
      *
      * @return mixed
      */
     public function rest($pattern, $model = null)
     {
+        // GET all records
         $this->get($pattern, function () use ($model) {
+            $args = func_get_args();
+
+            if (is_callable($model)) {
+                $model = call_user_func_array($model, $args);
+            }
+
             return $model;
         });
 
-        $this->get($pattern.'/:id', function ($id) use ($model) {
+        // GET :id - one record
+        $this->get($pattern.'/:id', function () use ($model) {
+            $args = func_get_args();
+            $id = array_pop($args); // pop last element of args array, it's :id
+
+            if (is_callable($model)) {
+                $model = call_user_func_array($model, $args);
+            }
+
             return $model->load($id)->get();
         });
 
-        $this->patch($pattern.'/:id', function ($id) use ($model) {
-            return $model->load($id)->set($this->requestData)->save()->get();
+        // PATCH :id - update one record (same as POST :id)
+        $this->patch($pattern.'/:id', function () use ($model) {
+            $args = func_get_args();
+            $id = array_pop($args); // pop last element of args array, it's :id
+
+            if (is_callable($model)) {
+                $model = call_user_func_array($model, $args);
+            }
+
+            return $model->load($id)->save($this->requestData)->get();
         });
-        $this->post($pattern.'/:id', function ($id) use ($model) {
-            return $model->load($id)->set($this->requestData)->save()->get();
+
+        // POST :id - update one record
+        $this->post($pattern.'/:id', function () use ($model) {
+            $args = func_get_args();
+            $id = array_pop($args); // pop last element of args array, it's :id
+
+            if (is_callable($model)) {
+                $model = call_user_func_array($model, $args);
+            }
+
+            return $model->load($id)->save($this->requestData)->get();
         });
-        $this->delete($pattern.'/:id', function ($id) use ($model) {
+
+        // DELETE :id - delete one record
+        $this->delete($pattern.'/:id', function () use ($model) {
+            $args = func_get_args();
+            $id = array_pop($args); // pop last element of args array, it's :id
+
+            if (is_callable($model)) {
+                $model = call_user_func_array($model, $args);
+            }
+
             return !$model->load($id)->delete()->loaded();
         });
 
+        // POST - insert new record
         $this->post($pattern, function () use ($model) {
-            return $model->set($this->requestData)->save()->get();
+            $args = func_get_args();
+
+            if (is_callable($model)) {
+                $model = call_user_func_array($model, $args);
+            }
+
+            return $model->unload()->save($this->requestData)->get();
         });
     }
 
