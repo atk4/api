@@ -134,14 +134,13 @@ class Api
                     );
             }
 
-            if ($this->emitter) {
-                // cannot do anything about it
-                $this->emitter->emit($this->response);
-            }
-
-            // no emitter (is that possible at all ?)
-            return $ret;
+            // emit response and exit
+            $this->emitter->emit($this->response);
+            exit;
         }
+
+        // @todo Should we also stop script execution if no response is received or just ignore that?
+        //exit;
     }
 
     /**
