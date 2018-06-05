@@ -32,6 +32,12 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
      * passed into an Api class. Execute callback $apiBuild afterwards allowing
      * you to define your custom handlers. Match response from the API against
      * the $response and if it is different - create assertion error.
+     *
+     * @param string   $response
+     * @param callable $apiBuild
+     * @param string   $uri
+     * @param string   $method
+     * @param array    $data
      */
     public function assertApi($response, $apiBuild, $uri = '/ping', $method = 'GET', $data = null)
     {
@@ -60,7 +66,12 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
     }
 
     /**
-     * Simmulate a request and validate a response.
+     * Simulate a request and validate a response.
+     *
+     * @param string   $response
+     * @param callable $handler
+     * @param string   $method
+     * @param array    $data
      */
     public function assertReq($response, $handler, $method = 'GET', $data = null)
     {

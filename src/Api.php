@@ -55,48 +55,52 @@ class Api
     }
 
     /**
-     * Do pattern matching.
+     * Do pattern matching and save extracted variables.
      *
-     * @param string   $pattern
-     * @param callable $callable
+     * @param string $pattern
      *
-     * @return mixed
+     * @return bool
      */
-    public function match($pattern, $callable = null)
+    protected $_vars;
+
+    public function match($pattern)
     {
         $path = explode('/', rtrim($this->path, '/'));
         $pattern = explode('/', rtrim($pattern, '/'));
 
-        $vars = [];
+        $this->_vars = [];
 
         while ($path || $pattern) {
             $p = array_shift($path);
             $r = array_shift($pattern);
 
+            // if path ends and there is nothing in pattern (used //) then continue
             if ($p === null && $r === '') {
                 continue;
             }
 
-            // must make sure both match
+            // if both match, then continue
             if ($p === $r) {
                 continue;
             }
 
-            // pattern 'r' accepts anything
+            // pattern '*' accepts anything
             if ($r == '*' && strlen($p)) {
                 continue;
             }
 
+            // if pattern ends, but there is still something in path, then don't match
             if ($r === null || $r === '') {
                 return false;
             }
 
+            // parameters always start with ':', save in $vars and continue
             if ($r[0] == ':' && strlen($p)) {
-                $vars[] = $p;
+                $this->_vars[] = $p;
                 continue;
             }
 
-            // good until the end
+            // pattern '**' = good until the end
             if ($r == '**') {
                 break;
             }
@@ -104,11 +108,17 @@ class Api
             return false;
         }
 
-        // if no callable function set - just say that it matches
-        if ($callable === null) {
-            return true;
-        }
+        return true;
+    }
 
+    /**
+     * Call callable and emit response.
+     *
+     * @param callable $callable
+     * @param array    $vars
+     */
+    public function call($callable, $vars = [])
+    {
         // try to call callable function
         try {
             $ret = call_user_func_array($callable, $vars);
@@ -122,19 +132,25 @@ class Api
             $ret = $ret->export();
         }
 
-        // create response object
-        if ($ret !== null) {
-            if (!$this->response) {
-                $this->response =
-                    new \Zend\Diactoros\Response\JsonResponse(
-                        $ret,
-                        200,
-                        [],
-                        JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT
-                    );
-            }
+        // no response, just step out
+        if ($ret === null) {
+            return;
+        }
 
-            // emit response and exit
+        // create response object
+        if (!$this->response) {
+            $this->response =
+                new \Zend\Diactoros\Response\JsonResponse(
+                    $ret,
+                    200,
+                    [],
+                    JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT
+                );
+        }
+
+        // if there is emitter, then emit response and exit
+        // for testing purposes there can be situations when emitter is disabled. then do nothing.
+        if ($this->emitter) {
             $this->emitter->emit($this->response);
             exit;
         }
@@ -153,8 +169,8 @@ class Api
      */
     public function get($pattern, $callable = null)
     {
-        if ($this->request->getMethod() === 'GET') {
-            return $this->match($pattern, $callable);
+        if ($this->request->getMethod() === 'GET' && $this->match($pattern)) {
+            return $this->call($callable, $this->_vars);
         }
     }
 
@@ -168,8 +184,8 @@ class Api
      */
     public function post($pattern, $callable = null)
     {
-        if ($this->request->getMethod() === 'POST') {
-            return $this->match($pattern, $callable);
+        if ($this->request->getMethod() === 'POST' && $this->match($pattern)) {
+            return $this->call($callable, $this->_vars);
         }
     }
 
@@ -183,8 +199,8 @@ class Api
      */
     public function patch($pattern, $callable = null)
     {
-        if ($this->request->getMethod() === 'PATCH') {
-            return $this->match($pattern, $callable);
+        if ($this->request->getMethod() === 'PATCH' && $this->match($pattern)) {
+            return $this->call($callable, $this->_vars);
         }
     }
 
@@ -198,41 +214,89 @@ class Api
      */
     public function delete($pattern, $callable = null)
     {
-        if ($this->request->getMethod() === 'DELETE') {
-            return $this->match($pattern, $callable);
+        if ($this->request->getMethod() === 'DELETE' && $this->match($pattern)) {
+            return $this->call($callable, $this->_vars);
         }
     }
 
     /**
      * Implement REST pattern matching.
      *
-     * @param string           $pattern
-     * @param \atk4\data\Model $model
+     * @param string                    $pattern
+     * @param \atk4\data\Model|callable $model
      *
      * @return mixed
      */
     public function rest($pattern, $model = null)
     {
+        // GET all records
         $this->get($pattern, function () use ($model) {
+            $args = func_get_args();
+
+            if (is_callable($model)) {
+                $model = call_user_func_array($model, $args);
+            }
+
             return $model;
         });
 
-        $this->get($pattern.'/:id', function ($id) use ($model) {
+        // GET :id - one record
+        $this->get($pattern.'/:id', function () use ($model) {
+            $args = func_get_args();
+            $id = array_pop($args); // pop last element of args array, it's :id
+
+            if (is_callable($model)) {
+                $model = call_user_func_array($model, $args);
+            }
+
             return $model->load($id)->get();
         });
 
-        $this->patch($pattern.'/:id', function ($id) use ($model) {
-            return $model->load($id)->set($this->requestData)->save()->get();
+        // PATCH :id - update one record (same as POST :id)
+        $this->patch($pattern.'/:id', function () use ($model) {
+            $args = func_get_args();
+            $id = array_pop($args); // pop last element of args array, it's :id
+
+            if (is_callable($model)) {
+                $model = call_user_func_array($model, $args);
+            }
+
+            return $model->load($id)->save($this->requestData)->get();
         });
-        $this->post($pattern.'/:id', function ($id) use ($model) {
-            return $model->load($id)->set($this->requestData)->save()->get();
+
+        // POST :id - update one record
+        $this->post($pattern.'/:id', function () use ($model) {
+            $args = func_get_args();
+            $id = array_pop($args); // pop last element of args array, it's :id
+
+            if (is_callable($model)) {
+                $model = call_user_func_array($model, $args);
+            }
+
+            return $model->load($id)->save($this->requestData)->get();
         });
-        $this->delete($pattern.'/:id', function ($id) use ($model) {
+
+        // DELETE :id - delete one record
+        $this->delete($pattern.'/:id', function () use ($model) {
+            $args = func_get_args();
+            $id = array_pop($args); // pop last element of args array, it's :id
+
+            if (is_callable($model)) {
+                $model = call_user_func_array($model, $args);
+            }
+
             return !$model->load($id)->delete()->loaded();
         });
 
+        // POST - insert new record
         $this->post($pattern, function () use ($model) {
-            return $model->set($this->requestData)->save()->get();
+            $args = func_get_args();
+
+            if (is_callable($model)) {
+                $model = call_user_func_array($model, $args);
+            }
+
+            return $model->unload()->save($this->requestData)->get();
         });
     }
 
