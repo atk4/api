@@ -137,9 +137,12 @@ class Api
                     );
             }
 
-            // emit response and exit
-            $this->emitter->emit($this->response);
-            exit;
+            // if there is emitter, then emit response and exit
+            // for testing purposes there can be situations when emitter is disabled. then do nothing.
+            if ($this->emitter) {
+                $this->emitter->emit($this->response);
+                exit;
+            }
         }
 
         // @todo Should we also stop script execution if no response is received or just ignore that?
