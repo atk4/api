@@ -62,7 +62,6 @@ class Api
      * @return bool
      */
     protected $_vars;
-
     public function match($pattern)
     {
         $path = explode('/', rtrim($this->path, '/'));
@@ -117,15 +116,11 @@ class Api
      * @param callable $callable
      * @param array    $vars
      */
-    public function call($callable, $vars)
+    public function call($callable, $vars = [])
     {
         // try to call callable function
         try {
             $ret = call_user_func_array($callable, $vars);
-
-            if (is_callable($ret)) {
-                $ret = call_user_func_array($ret, $vars);
-            }
         } catch (\Exception $e) {
             $this->caughtException($e);
         }
@@ -136,24 +131,27 @@ class Api
             $ret = $ret->export();
         }
 
-        // create response object
-        if ($ret !== null) {
-            if (!$this->response) {
-                $this->response =
-                    new \Zend\Diactoros\Response\JsonResponse(
-                        $ret,
-                        200,
-                        [],
-                        JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT
-                    );
-            }
+        // no response, just step out
+        if ($ret === null) {
+            return;
+        }
 
-            // if there is emitter, then emit response and exit
-            // for testing purposes there can be situations when emitter is disabled. then do nothing.
-            if ($this->emitter) {
-                $this->emitter->emit($this->response);
-                exit;
-            }
+        // create response object
+        if (!$this->response) {
+            $this->response =
+                new \Zend\Diactoros\Response\JsonResponse(
+                    $ret,
+                    200,
+                    [],
+                    JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT
+                );
+        }
+
+        // if there is emitter, then emit response and exit
+        // for testing purposes there can be situations when emitter is disabled. then do nothing.
+        if ($this->emitter) {
+            $this->emitter->emit($this->response);
+            exit;
         }
 
         // @todo Should we also stop script execution if no response is received or just ignore that?
