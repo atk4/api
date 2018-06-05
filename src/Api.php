@@ -55,25 +55,25 @@ class Api
     }
 
     /**
-     * Do pattern matching.
+     * Do pattern matching and save extracted variables.
      *
-     * @param string   $pattern
-     * @param callable $callable
+     * @param string $pattern
      *
-     * @return mixed
+     * @return bool
      */
-    public function match($pattern, $callable = null)
+    protected $_vars;
+    public function match($pattern)
     {
         $path = explode('/', rtrim($this->path, '/'));
         $pattern = explode('/', rtrim($pattern, '/'));
 
-        $vars = [];
+        $this->_vars = [];
 
         while ($path || $pattern) {
             $p = array_shift($path);
             $r = array_shift($pattern);
 
-            // if path ends and there is nothing in pattern (use //) then continue
+            // if path ends and there is nothing in pattern (used //) then continue
             if ($p === null && $r === '') {
                 continue;
             }
@@ -95,7 +95,7 @@ class Api
 
             // parameters always start with ':', save in $vars and continue
             if ($r[0] == ':' && strlen($p)) {
-                $vars[] = $p;
+                $this->_vars[] = $p;
                 continue;
             }
 
@@ -107,14 +107,24 @@ class Api
             return false;
         }
 
-        // if no callable function set - just say that it matches
-        if ($callable === null) {
-            return true;
-        }
+        return true;
+    }
 
+    /**
+     * Call callable and emit response.
+     *
+     * @param callable $callable
+     * @param array    $vars
+     */
+    public function call($callable, $vars)
+    {
         // try to call callable function
         try {
             $ret = call_user_func_array($callable, $vars);
+
+            if (is_callable($ret)) {
+                $ret = call_user_func_array($ret, $vars);
+            }
         } catch (\Exception $e) {
             $this->caughtException($e);
         }
@@ -159,8 +169,8 @@ class Api
      */
     public function get($pattern, $callable = null)
     {
-        if ($this->request->getMethod() === 'GET') {
-            return $this->match($pattern, $callable);
+        if ($this->request->getMethod() === 'GET' && $this->match($pattern)) {
+            return $this->call($callable, $this->_vars);
         }
     }
 
@@ -174,8 +184,8 @@ class Api
      */
     public function post($pattern, $callable = null)
     {
-        if ($this->request->getMethod() === 'POST') {
-            return $this->match($pattern, $callable);
+        if ($this->request->getMethod() === 'POST' && $this->match($pattern)) {
+            return $this->call($callable, $this->_vars);
         }
     }
 
@@ -189,8 +199,8 @@ class Api
      */
     public function patch($pattern, $callable = null)
     {
-        if ($this->request->getMethod() === 'PATCH') {
-            return $this->match($pattern, $callable);
+        if ($this->request->getMethod() === 'PATCH' && $this->match($pattern)) {
+            return $this->call($callable, $this->_vars);
         }
     }
 
@@ -204,8 +214,8 @@ class Api
      */
     public function delete($pattern, $callable = null)
     {
-        if ($this->request->getMethod() === 'DELETE') {
-            return $this->match($pattern, $callable);
+        if ($this->request->getMethod() === 'DELETE' && $this->match($pattern)) {
+            return $this->call($callable, $this->_vars);
         }
     }
 
