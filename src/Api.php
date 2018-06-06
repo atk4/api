@@ -129,7 +129,11 @@ class Api
         // if callable function returns agile data model, then export it
         // this is important for REST API implementation
         if ($ret instanceof \atk4\data\Model) {
-            $ret = $ret->export();
+            if ($ret->only_fields) {
+                $ret = $ret->export($ret->only_fields); // use only_fields to not add system fields by default
+            } else {
+                $ret = $ret->export(); // all fields including allsystem fields
+            }
         }
 
         // no response, just step out
