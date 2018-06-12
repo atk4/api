@@ -323,7 +323,7 @@ class Api
     public function rest($pattern, $model = null)
     {
         // GET all records
-        $this->get($pattern, function () use ($model) {
+        $f = function () use ($model) {
             $args = func_get_args();
 
             if (is_callable($model)) {
@@ -331,10 +331,11 @@ class Api
             }
 
             return $model;
-        });
+        };
+        $this->get($pattern, $f);
 
         // GET :id - one record
-        $this->get($pattern.'/:id', function () use ($model) {
+        $f = function () use ($model) {
             $args = func_get_args();
             $id = array_pop($args); // pop last element of args array, it's :id
 
@@ -346,27 +347,12 @@ class Api
             $model->onlyFields($this->getAllowedFields($model, 'read'));
 
             return $model->load($id)->get();
-        });
-
-        // PATCH :id - update one record (same as POST :id)
-        $this->patch($pattern.'/:id', function () use ($model) {
-            $args = func_get_args();
-            $id = array_pop($args); // pop last element of args array, it's :id
-
-            if (is_callable($model)) {
-                $model = $this->call($model, $args);
-            }
-
-            // limit fields
-            $model->onlyFields($this->getAllowedFields($model, 'modify'));
-            $model->load($id)->save($this->requestData);
-            $model->onlyFields($this->getAllowedFields($model, 'read'));
-
-            return $model->get();
-        });
+        };
+        $this->get($pattern.'/:id', $f);
 
         // POST :id - update one record
-        $this->post($pattern.'/:id', function () use ($model) {
+        // PATCH :id - update one record (same as POST :id)
+        $f = function () use ($model) {
             $args = func_get_args();
             $id = array_pop($args); // pop last element of args array, it's :id
 
@@ -380,10 +366,12 @@ class Api
             $model->onlyFields($this->getAllowedFields($model, 'read'));
 
             return $model->get();
-        });
+        };
+        $this->patch($pattern.'/:id', $f);
+        $this->post($pattern.'/:id', $f);
 
         // POST - insert new record
-        $this->post($pattern, function () use ($model) {
+        $f = function () use ($model) {
             $args = func_get_args();
 
             if (is_callable($model)) {
@@ -396,10 +384,11 @@ class Api
             $model->onlyFields($this->getAllowedFields($model, 'read'));
 
             return $model->get();
-        });
+        };
+        $this->post($pattern, $f);
 
         // DELETE :id - delete one record
-        $this->delete($pattern.'/:id', function () use ($model) {
+        $f = function () use ($model) {
             $args = func_get_args();
             $id = array_pop($args); // pop last element of args array, it's :id
 
@@ -411,7 +400,8 @@ class Api
             $model->onlyFields($this->getAllowedFields($model, 'read'));
 
             return !$model->delete($id)->loaded();
-        });
+        };
+        $this->delete($pattern.'/:id', $f);
     }
 
     /**
