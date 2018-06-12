@@ -117,7 +117,35 @@ class Api
      * @param callable $callable
      * @param array    $vars
      */
-    public function call($callable, $vars = [])
+    public function exec($callable, $vars = [])
+    {
+        // try to call callable function
+        $ret = $this->call($callable, $vars);
+
+        // if callable function returns agile data model, then export it
+        // this is important for REST API implementation
+        if ($ret instanceof \atk4\data\Model) {
+            $ret = $this->exportModel($ret);
+        }
+
+        // no response, just step out
+        if ($ret === null) {
+            return;
+        }
+
+        // emit successful response
+        $this->successResponse($ret);
+    }
+
+    /**
+     * Call callable and return response.
+     *
+     * @param callable $callable
+     * @param array    $vars
+     *
+     * @return mixed
+     */
+    protected function call($callable, $vars = [])
     {
         // try to call callable function
         try {
@@ -126,26 +154,87 @@ class Api
             $this->caughtException($e);
         }
 
-        // if callable function returns agile data model, then export it
-        // this is important for REST API implementation
-        if ($ret instanceof \atk4\data\Model) {
-            if ($ret->only_fields) {
-                $ret = $ret->export($ret->only_fields); // use only_fields to not add system fields by default
-            } else {
-                $ret = $ret->export(); // all fields including allsystem fields
-            }
+        return $ret;
+    }
+
+    /**
+     * Exports data model.
+     *
+     * Extend this method to implement your own field restrictions.
+     *
+     * @param \atk4\data\Model $m
+     *
+     * @return array
+     */
+    protected function exportModel(\atk4\data\Model $m)
+    {
+        return $m->export($this->getAllowedFields($m, 'read'));
+    }
+
+    /**
+     * Returns list of model field names which allow particular action - read or modify.
+     * Also takes model->only_fields into account if that's defined.
+     *
+     * It uses custom model property apiFields[$action] which should contain array of allowed field names.
+     *
+     * @param \atk4\data\Model $m
+     * @param string           $action read|modify
+     *
+     * @return null|array of field names
+     */
+    protected function getAllowedFields(\atk4\data\Model $m, $action = 'read')
+    {
+        $fields = null;
+
+        // take model only_fields into account
+        if ($m->only_fields) {
+            $fields = $m->only_fields;
         }
 
-        // no response, just step out
-        if ($ret === null) {
-            return;
+        // limit by apiFields
+        if (isset($m->apiFields[$action])) {
+            $allowed = $m->apiFields[$action];
+            $fields = $fields ? array_intersect($fields, $allowed) : $allowed;
         }
 
+        return $fields;
+    }
+
+    /**
+     * Filters data array by only allowed fields.
+     *
+     * Extend this method to implement your own field restrictions.
+     *
+     * @param \atk4\data\Model $m
+     * @param array            $data
+     *
+     * @return array
+     */
+    /* not used and maybe will not be needed too
+    protected function filterData(\atk4\data\Model $m, array $data)
+    {
+        $allowed = $this->getAllowedFields($m, 'modify');
+
+        if ($allowed) {
+            $data = array_intersect_key($data, array_flip($allowed));
+        }
+
+        return $data;
+    }
+    */
+
+    /**
+     * Emit successful response.
+     *
+     * @param mixed $response
+     */
+    protected function successResponse($response)
+    {
         // create response object
         if (!$this->response) {
             $this->response =
                 new \Zend\Diactoros\Response\JsonResponse(
-                    $ret,
+                    $response,
                     200,
                     [],
                     JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT
@@ -159,7 +248,7 @@ class Api
             exit;
         }
 
-        // @todo Should we also stop script execution if no response is received or just ignore that?
+        // @todo Should we also stop script execution if no emitter is defined or just ignore that?
         //exit;
     }
 
@@ -174,7 +263,7 @@ class Api
     public function get($pattern, $callable = null)
     {
         if ($this->request->getMethod() === 'GET' && $this->match($pattern)) {
-            return $this->call($callable, $this->_vars);
+            return $this->exec($callable, $this->_vars);
         }
     }
 
@@ -189,7 +278,7 @@ class Api
     public function post($pattern, $callable = null)
     {
         if ($this->request->getMethod() === 'POST' && $this->match($pattern)) {
-            return $this->call($callable, $this->_vars);
+            return $this->exec($callable, $this->_vars);
         }
     }
 
@@ -204,7 +293,7 @@ class Api
     public function patch($pattern, $callable = null)
     {
         if ($this->request->getMethod() === 'PATCH' && $this->match($pattern)) {
-            return $this->call($callable, $this->_vars);
+            return $this->exec($callable, $this->_vars);
         }
     }
 
@@ -219,7 +308,7 @@ class Api
     public function delete($pattern, $callable = null)
     {
         if ($this->request->getMethod() === 'DELETE' && $this->match($pattern)) {
-            return $this->call($callable, $this->_vars);
+            return $this->exec($callable, $this->_vars);
         }
     }
 
@@ -238,7 +327,7 @@ class Api
             $args = func_get_args();
 
             if (is_callable($model)) {
-                $model = call_user_func_array($model, $args);
+                $model = $this->call($model, $args);
             }
 
             return $model;
@@ -250,8 +339,11 @@ class Api
             $id = array_pop($args); // pop last element of args array, it's :id
 
             if (is_callable($model)) {
-                $model = call_user_func_array($model, $args);
+                $model = $this->call($model, $args);
             }
+
+            // limit fields
+            $model->onlyFields($this->getAllowedFields($model, 'read'));
 
             return $model->load($id)->get();
         });
@@ -262,10 +354,15 @@ class Api
             $id = array_pop($args); // pop last element of args array, it's :id
 
             if (is_callable($model)) {
-                $model = call_user_func_array($model, $args);
+                $model = $this->call($model, $args);
             }
 
-            return $model->load($id)->save($this->requestData)->get();
+            // limit fields
+            $model->onlyFields($this->getAllowedFields($model, 'modify'));
+            $model->load($id)->save($this->requestData);
+            $model->onlyFields($this->getAllowedFields($model, 'read'));
+
+            return $model->get();
         });
 
         // POST :id - update one record
@@ -274,10 +371,31 @@ class Api
             $id = array_pop($args); // pop last element of args array, it's :id
 
             if (is_callable($model)) {
-                $model = call_user_func_array($model, $args);
+                $model = $this->call($model, $args);
             }
 
-            return $model->load($id)->save($this->requestData)->get();
+            // limit fields
+            $model->onlyFields($this->getAllowedFields($model, 'modify'));
+            $model->load($id)->save($this->requestData);
+            $model->onlyFields($this->getAllowedFields($model, 'read'));
+
+            return $model->get();
+        });
+
+        // POST - insert new record
+        $this->post($pattern, function () use ($model) {
+            $args = func_get_args();
+
+            if (is_callable($model)) {
+                $model = $this->call($model, $args);
+            }
+
+            // limit fields
+            $model->onlyFields($this->getAllowedFields($model, 'modify'));
+            $model->unload()->save($this->requestData);
+            $model->onlyFields($this->getAllowedFields($model, 'read'));
+
+            return $model->get();
         });
 
         // DELETE :id - delete one record
@@ -286,21 +404,13 @@ class Api
             $id = array_pop($args); // pop last element of args array, it's :id
 
             if (is_callable($model)) {
-                $model = call_user_func_array($model, $args);
+                $model = $this->call($model, $args);
             }
 
-            return !$model->load($id)->delete()->loaded();
-        });
+            // limit fields (not necessary, but will limit field list for performance)
+            $model->onlyFields($this->getAllowedFields($model, 'read'));
 
-        // POST - insert new record
-        $this->post($pattern, function () use ($model) {
-            $args = func_get_args();
-
-            if (is_callable($model)) {
-                $model = call_user_func_array($model, $args);
-            }
-
-            return $model->unload()->save($this->requestData)->get();
+            return !$model->delete($id)->loaded();
         });
     }
 
