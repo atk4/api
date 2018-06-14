@@ -317,91 +317,107 @@ class Api
      *
      * @param string                    $pattern
      * @param \atk4\data\Model|callable $model
+     * @param array                     $methods Allowed methods (read|modify|delete). By default all are allowed
      *
      * @return mixed
      */
-    public function rest($pattern, $model = null)
+    public function rest($pattern, $model = null, $methods = null)
     {
+        if (!$methods) {
+            $methods = ['read', 'modify', 'delete'];
+        }
+        $methods = array_map('strtolower', $methods);
+
         // GET all records
-        $f = function () use ($model) {
-            $args = func_get_args();
+        if (in_array('read', $methods)) {
+            $f = function () use ($model) {
+                $args = func_get_args();
 
-            if (is_callable($model)) {
-                $model = $this->call($model, $args);
-            }
+                if (is_callable($model)) {
+                    $model = $this->call($model, $args);
+                }
 
-            return $model;
-        };
-        $this->get($pattern, $f);
+                return $model;
+            };
+            $this->get($pattern, $f);
+        }
 
         // GET :id - one record
-        $f = function () use ($model) {
-            $args = func_get_args();
-            $id = array_pop($args); // pop last element of args array, it's :id
+        if (in_array('read', $methods)) {
+            $f = function () use ($model) {
+                $args = func_get_args();
+                $id = array_pop($args); // pop last element of args array, it's :id
 
-            if (is_callable($model)) {
-                $model = $this->call($model, $args);
-            }
+                if (is_callable($model)) {
+                    $model = $this->call($model, $args);
+                }
 
-            // limit fields
-            $model->onlyFields($this->getAllowedFields($model, 'read'));
+                // limit fields
+                $model->onlyFields($this->getAllowedFields($model, 'read'));
 
-            return $model->load($id)->get();
-        };
-        $this->get($pattern.'/:id', $f);
+                return $model->load($id)->get();
+            };
+            $this->get($pattern.'/:id', $f);
+        }
 
         // POST :id - update one record
         // PATCH :id - update one record (same as POST :id)
-        $f = function () use ($model) {
-            $args = func_get_args();
-            $id = array_pop($args); // pop last element of args array, it's :id
+        if (in_array('modify', $methods)) {
+            $f = function () use ($model) {
+                $args = func_get_args();
+                $id = array_pop($args); // pop last element of args array, it's :id
 
-            if (is_callable($model)) {
-                $model = $this->call($model, $args);
-            }
+                if (is_callable($model)) {
+                    $model = $this->call($model, $args);
+                }
 
-            // limit fields
-            $model->onlyFields($this->getAllowedFields($model, 'modify'));
-            $model->load($id)->save($this->requestData);
-            $model->onlyFields($this->getAllowedFields($model, 'read'));
+                // limit fields
+                $model->onlyFields($this->getAllowedFields($model, 'modify'));
+                $model->load($id)->save($this->requestData);
+                $model->onlyFields($this->getAllowedFields($model, 'read'));
 
-            return $model->get();
-        };
-        $this->patch($pattern.'/:id', $f);
-        $this->post($pattern.'/:id', $f);
+                return $model->get();
+            };
+            $this->patch($pattern.'/:id', $f);
+            $this->post($pattern.'/:id', $f);
+        }
 
         // POST - insert new record
-        $f = function () use ($model) {
-            $args = func_get_args();
+        if (in_array('modify', $methods)) {
+            $f = function () use ($model) {
+                $args = func_get_args();
 
-            if (is_callable($model)) {
-                $model = $this->call($model, $args);
-            }
+                if (is_callable($model)) {
+                    $model = $this->call($model, $args);
+                }
 
-            // limit fields
-            $model->onlyFields($this->getAllowedFields($model, 'modify'));
-            $model->unload()->save($this->requestData);
-            $model->onlyFields($this->getAllowedFields($model, 'read'));
+                // limit fields
+                $model->onlyFields($this->getAllowedFields($model, 'modify'));
+                $model->unload()->save($this->requestData);
+                $model->onlyFields($this->getAllowedFields($model, 'read'));
 
-            return $model->get();
-        };
-        $this->post($pattern, $f);
+                return $model->get();
+            };
+            $this->post($pattern, $f);
+        }
 
         // DELETE :id - delete one record
-        $f = function () use ($model) {
-            $args = func_get_args();
-            $id = array_pop($args); // pop last element of args array, it's :id
+        if (in_array('delete', $methods)) {
+            $f = function () use ($model) {
+                $args = func_get_args();
+                $id = array_pop($args); // pop last element of args array, it's :id
 
-            if (is_callable($model)) {
-                $model = $this->call($model, $args);
-            }
+                if (is_callable($model)) {
+                    $model = $this->call($model, $args);
+                }
 
-            // limit fields (not necessary, but will limit field list for performance)
-            $model->onlyFields($this->getAllowedFields($model, 'read'));
+                // limit fields (not necessary, but will limit field list for performance)
+                $model->onlyFields($this->getAllowedFields($model, 'read'));
 
-            return !$model->delete($id)->loaded();
-        };
-        $this->delete($pattern.'/:id', $f);
+                return !$model->delete($id)->loaded();
+            };
+            $this->delete($pattern.'/:id', $f);
+        }
     }
 
     /**
