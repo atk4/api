@@ -199,6 +199,7 @@ class Api
         // value is not ID
         if (is_array($value)) {
             $field = empty($value[0]) ? $m->title_field : $value[0];
+
             return $m->loadBy($field, $value[1]);
         }
 
@@ -406,7 +407,7 @@ class Api
                 // limit fields
                 $model->onlyFields($this->getAllowedFields($model, 'read'));
 
-//var_dump($id);
+                //var_dump($id);
 
                 // load model and get field values
                 return $this->loadModelByValue($model, $id)->get();
