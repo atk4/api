@@ -33,6 +33,8 @@ engines:
         enabled: false
       Controversial/CamelCaseClassName:
         enabled: false
+      Controversial/Superglobals: # we use SESSION global
+        enabled: false
       Naming/ShortVariable:
         enabled: false
       CleanCode/ElseExpression:
