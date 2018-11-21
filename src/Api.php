@@ -96,7 +96,16 @@ class Api
 
             // parameters always start with ':', save in $vars and continue
             if ($r[0] == ':' && strlen($p)) {
-                $this->_vars[] = $p;
+                // if value contains : then treat it as fieldname:value pair
+                // if value contains : and there is no fieldname (:ABC for example),
+                // then it will use model->title_field as fieldname
+                // otherwise it will be treated as id value
+                if (strpos($p, ':') !== false) {
+                    $parts = explode(':', $p, 2);
+                    $this->_vars[] = [urldecode($parts[0]), urldecode($parts[1])];
+                } else {
+                    $this->_vars[] = urldecode($p);
+                }
                 continue;
             }
 
@@ -172,10 +181,38 @@ class Api
     }
 
     /**
+     * Load model by value.
+     *
+     * Value could be:
+     *  - string                : will be treated as ID value
+     *  - array[fieldname,value]:
+     *    - if fieldname is empty, then use model->title_field
+     *    - if fieldname is not empty, then use it
+     *
+     * @param \atk\data\Model $m
+     * @param string|array    $value
+     *
+     * @return \atk4\data\Model
+     */
+    protected function loadModelByValue(\atk4\data\Model $m, $value)
+    {
+        // value is not ID
+        if (is_array($value)) {
+            $field = empty($value[0]) ? $m->title_field : $value[0];
+
+            return $m->loadBy($field, $value[1]);
+        }
+
+        // value is ID
+        return $m->load($value);
+    }
+
+    /**
      * Returns list of model field names which allow particular action - read or modify.
      * Also takes model->only_fields into account if that's defined.
      *
-     * It uses custom model property apiFields[$action] which should contain array of allowed field names.
+     * It uses custom model property apiFields[$action] which should contain array of
+     * allowed field names or null to allow all model fields.
      *
      * @param \atk4\data\Model $m
      * @param string           $action read|modify
@@ -298,6 +335,21 @@ class Api
     }
 
     /**
+     * Do PUT pattern matching.
+     *
+     * @param string   $pattern
+     * @param callable $callable
+     *
+     * @return mixed
+     */
+    public function put($pattern, $callable = null)
+    {
+        if ($this->request->getMethod() === 'PUT' && $this->match($pattern)) {
+            return $this->exec($callable, $this->_vars);
+        }
+    }
+
+    /**
      * Do DELETE pattern matching.
      *
      * @param string   $pattern
@@ -317,91 +369,110 @@ class Api
      *
      * @param string                    $pattern
      * @param \atk4\data\Model|callable $model
+     * @param array                     $methods Allowed methods (read|modify|delete). By default all are allowed
      *
      * @return mixed
      */
-    public function rest($pattern, $model = null)
+    public function rest($pattern, $model = null, $methods = null)
     {
+        if (!$methods) {
+            $methods = ['read', 'modify', 'delete'];
+        }
+        $methods = array_map('strtolower', $methods);
+
         // GET all records
-        $f = function () use ($model) {
-            $args = func_get_args();
+        if (in_array('read', $methods)) {
+            $f = function () use ($model) {
+                $args = func_get_args();
 
-            if (is_callable($model)) {
-                $model = $this->call($model, $args);
-            }
+                if (is_callable($model)) {
+                    $model = $this->call($model, $args);
+                }
 
-            return $model;
-        };
-        $this->get($pattern, $f);
+                return $model;
+            };
+            $this->get($pattern, $f);
+        }
 
         // GET :id - one record
-        $f = function () use ($model) {
-            $args = func_get_args();
-            $id = array_pop($args); // pop last element of args array, it's :id
+        if (in_array('read', $methods)) {
+            $f = function () use ($model) {
+                $args = func_get_args();
+                $id = array_pop($args); // pop last element of args array, it's :id
 
-            if (is_callable($model)) {
-                $model = $this->call($model, $args);
-            }
+                if (is_callable($model)) {
+                    $model = $this->call($model, $args);
+                }
 
-            // limit fields
-            $model->onlyFields($this->getAllowedFields($model, 'read'));
+                // limit fields
+                $model->onlyFields($this->getAllowedFields($model, 'read'));
 
-            return $model->load($id)->get();
-        };
-        $this->get($pattern.'/:id', $f);
+                // load model and get field values
+                return $this->loadModelByValue($model, $id)->get();
+            };
+            $this->get($pattern.'/:id', $f);
+        }
 
         // POST :id - update one record
         // PATCH :id - update one record (same as POST :id)
-        $f = function () use ($model) {
-            $args = func_get_args();
-            $id = array_pop($args); // pop last element of args array, it's :id
+        // PUT :id - update one record (same as POST :id)
+        if (in_array('modify', $methods)) {
+            $f = function () use ($model) {
+                $args = func_get_args();
+                $id = array_pop($args); // pop last element of args array, it's :id
 
-            if (is_callable($model)) {
-                $model = $this->call($model, $args);
-            }
+                if (is_callable($model)) {
+                    $model = $this->call($model, $args);
+                }
 
-            // limit fields
-            $model->onlyFields($this->getAllowedFields($model, 'modify'));
-            $model->load($id)->save($this->requestData);
-            $model->onlyFields($this->getAllowedFields($model, 'read'));
+                // limit fields
+                $model->onlyFields($this->getAllowedFields($model, 'modify'));
+                $this->loadModelByValue($model, $id)->save($this->requestData);
+                $model->onlyFields($this->getAllowedFields($model, 'read'));
 
-            return $model->get();
-        };
-        $this->patch($pattern.'/:id', $f);
-        $this->post($pattern.'/:id', $f);
+                return $model->get();
+            };
+            $this->patch($pattern.'/:id', $f);
+            $this->post($pattern.'/:id', $f);
+            $this->put($pattern.'/:id', $f);
+        }
 
         // POST - insert new record
-        $f = function () use ($model) {
-            $args = func_get_args();
+        if (in_array('modify', $methods)) {
+            $f = function () use ($model) {
+                $args = func_get_args();
 
-            if (is_callable($model)) {
-                $model = $this->call($model, $args);
-            }
+                if (is_callable($model)) {
+                    $model = $this->call($model, $args);
+                }
 
-            // limit fields
-            $model->onlyFields($this->getAllowedFields($model, 'modify'));
-            $model->unload()->save($this->requestData);
-            $model->onlyFields($this->getAllowedFields($model, 'read'));
+                // limit fields
+                $model->onlyFields($this->getAllowedFields($model, 'modify'));
+                $model->unload()->save($this->requestData);
+                $model->onlyFields($this->getAllowedFields($model, 'read'));
 
-            return $model->get();
-        };
-        $this->post($pattern, $f);
+                return $model->get();
+            };
+            $this->post($pattern, $f);
+        }
 
         // DELETE :id - delete one record
-        $f = function () use ($model) {
-            $args = func_get_args();
-            $id = array_pop($args); // pop last element of args array, it's :id
+        if (in_array('delete', $methods)) {
+            $f = function () use ($model) {
+                $args = func_get_args();
+                $id = array_pop($args); // pop last element of args array, it's :id
 
-            if (is_callable($model)) {
-                $model = $this->call($model, $args);
-            }
+                if (is_callable($model)) {
+                    $model = $this->call($model, $args);
+                }
 
-            // limit fields (not necessary, but will limit field list for performance)
-            $model->onlyFields($this->getAllowedFields($model, 'read'));
+                // limit fields (not necessary, but will limit field list for performance)
+                $model->onlyFields($this->getAllowedFields($model, 'read'));
 
-            return !$model->delete($id)->loaded();
-        };
-        $this->delete($pattern.'/:id', $f);
+                return !$model->delete($id)->loaded();
+            };
+            $this->delete($pattern.'/:id', $f);
+        }
     }
 
     /**
@@ -420,6 +491,7 @@ class Api
             new \Zend\Diactoros\Response\JsonResponse(
                 [
                     'error'=> [
+                        'code'   => $e->getCode(),
                         'message'=> $e->getMessage(),
                         'args'   => $params,
                     ],
