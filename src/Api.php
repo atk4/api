@@ -7,6 +7,8 @@ namespace atk4\api;
  */
 class Api
 {
+    use \atk4\core\AppScopeTrait;
+
     /** @var \Zend\Diactoros\ServerRequest Request object */
     public $request;
 
@@ -402,6 +404,27 @@ class Api
             return !$model->delete($id)->loaded();
         };
         $this->delete($pattern.'/:id', $f);
+    }
+
+    function prepareModel($model)
+    {
+        if (!$model) {
+            throw new Exception(['Model must be specified', 'model'=>$model]);
+        }
+
+        if (is_callable($model)) {
+            $model = call_user_func($model);
+        } elseif (!is_object($model)) {
+            if ($this->api) {
+                return $this->api->factory($model);
+            }
+        }
+
+        if (!$model) {
+            throw new Exception(['Model value is incorrect', 'model'=>$model]);
+        }
+
+        return $model;
     }
 
     /**
