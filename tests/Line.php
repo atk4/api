@@ -1,4 +1,5 @@
 <?php
+
 namespace atk4\api\tests;
 
 class Line extends \atk4\data\Model
@@ -11,7 +12,7 @@ class Line extends \atk4\data\Model
         $this->addField('ref_no');
 
         $this->hasOne('client_id', new Client());
-        $this->hasMany('Lines', new Line())
+        $this->hasMany('Lines', new self())
             ->addField('total', ['aggregate'=>'sum']);
     }
 }

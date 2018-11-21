@@ -406,7 +406,7 @@ class Api
         $this->delete($pattern.'/:id', $f);
     }
 
-    function prepareModel($model)
+    public function prepareModel($model)
     {
         if (!$model) {
             throw new Exception(['Model must be specified', 'model'=>$model]);

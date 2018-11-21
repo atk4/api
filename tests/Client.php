@@ -1,7 +1,8 @@
 <?php
+
 namespace atk4\api\tests;
 
-class Country extends \atk4\data\Model
+class Client extends \atk4\data\Model
 {
     public $table = 'country';
 
@@ -14,6 +15,5 @@ class Country extends \atk4\data\Model
 
         $this->hasMany('InvoicesDue', (new Invoice($this->persistence))->addCondition('is_paid', false))
             ->addField('total_due', ['aggregate'=>'sum', 'field'=>'total']);
-
     }
 }

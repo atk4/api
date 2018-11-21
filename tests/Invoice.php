@@ -1,4 +1,5 @@
 <?php
+
 namespace atk4\api\tests;
 
 class Invoice extends \atk4\data\Model

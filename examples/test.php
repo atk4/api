@@ -17,10 +17,11 @@ $api->get('/ping/:hello', function ($hello) {
 $api->rest('/clients', new \atk4\api\tests\Country($db));
 
 // Tweak our model accordingly
-$api->rest('/clients2', function() use ($db) {
+$api->rest('/clients2', function () use ($db) {
     $c = new \atk4\api\tests\Country($db);
     $c->setLimit(10);
     $c->setOrder('name');
     $c->addCondition('id', '<', 100);
+
     return $c;
 });
