@@ -39,7 +39,8 @@ class Api
             $script = $_SERVER['SCRIPT_NAME'];
             $path = $_SERVER['REQUEST_URI'];
 
-            $this->path = str_replace(dirname($script), '', str_replace($script, '', $path));
+            $regex = '|^'.preg_quote(dirname($script)).'(/'.preg_quote(basename($script)).')?|i';
+            $this->path = preg_replace($regex, '', $path, 1);
         }
 
         $ct = $this->request->getHeader('Content-Type');
