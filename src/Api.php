@@ -484,7 +484,7 @@ class Api
     public function caughtException(\Exception $e)
     {
         $params = [];
-        if($e instanceOf \atk4\core\Exception) {
+        if ($e instanceof \atk4\core\Exception) {
             foreach ($e->getParams() as $key => $val) {
                 $params[$key] = $e->toString($val);
             }
