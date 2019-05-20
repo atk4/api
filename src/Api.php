@@ -22,13 +22,6 @@ class Api
     /** @var string Request path */
     public $path;
 
-    /**
-     * @var bool If set to true, the first array element of Model->export
-     * will be returned (GET single record)
-     * If not, the array will be returned as-is
-     */
-    public $singleRecord = false;
-
 
     /**
      * Reads everything off globals.
@@ -186,12 +179,6 @@ class Api
      */
     protected function exportModel(\atk4\data\Model $m)
     {
-        //on single record request, return first array element if available or null
-        if($this->singleRecord) {
-            $records = $m->export($this->getAllowedFields($m, 'read'), null, false);
-            return $records ? reset($records) : null;
-        }
-        //else return array
         return $m->export($this->getAllowedFields($m, 'read'), null, false);
     }
 
@@ -419,15 +406,26 @@ class Api
                     $model = $this->call($model, $args);
                 }
 
-                // limit fields
-                $model->onlyFields($this->getAllowedFields($model, 'read'));
-                $model->addCondition($model->id_field, $id);
                 $this->loadModelByValue($model, $id);
-                $this->singleRecord = true;
 
-                // load model and get field values
-                return $model;
+                //calculate only once
+                $allowed_fields = $this->getAllowedFields($model, 'read');
+                $data = [];
+                // get all field-elements
+                foreach ($model->elements as $field => $f) {
+                    //only use allowed fields
+                    if(!in_array($field, $allowed_fields)) {
+                        continue;
+                    }
+
+                    if ($f instanceof \atk4\data\Field) {
+                        $data[$field] = $f->toString();
+                    }
+                }
+
+                return $data;
             };
+
             $this->get($pattern.'/:id', $f);
         }
 
