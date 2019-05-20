@@ -23,6 +23,14 @@ class Api
     public $path;
 
     /**
+     * @var bool If set to true, the first array element of Model->export
+     * will be returned (GET single record)
+     * If not, the array will be returned as-is
+     */
+    public $singleRecord = false;
+
+
+    /**
      * Reads everything off globals.
      *
      * @param \Zend\Diactoros\ServerRequest $request
@@ -178,7 +186,13 @@ class Api
      */
     protected function exportModel(\atk4\data\Model $m)
     {
-        return $m->export($this->getAllowedFields($m, 'read'));
+        //on single record request, return first array element if available or null
+        if($this->singleRecord) {
+            $records = $m->export($this->getAllowedFields($m, 'read'), null, false);
+            return $records ? reset($records) : null;
+        }
+        //else return array
+        return $m->export($this->getAllowedFields($m, 'read'), null, false);
     }
 
     /**
@@ -407,9 +421,12 @@ class Api
 
                 // limit fields
                 $model->onlyFields($this->getAllowedFields($model, 'read'));
+                $model->addCondition($model->id_field, $id);
+                $this->loadModelByValue($model, $id);
+                $this->singleRecord = true;
 
                 // load model and get field values
-                return $this->loadModelByValue($model, $id)->get();
+                return $model;
             };
             $this->get($pattern.'/:id', $f);
         }
