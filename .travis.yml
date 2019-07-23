@@ -15,9 +15,11 @@ before_script:
   - composer install
 #    - mysql -e 'create database dsql_test;'
 
+
 after_script:
-  - echo $TRAVIS_PHP_VERSION
-  - if [[ ${TRAVIS_PHP_VERSION:0:3} == "7.2" ]]; then echo "Sending codecov report"; bash <(curl -s https://codecov.io/bash); fi
+  - echo $TRAVIS_BRANCH
+  - if [[ ${TRAVIS_PHP_VERSION:0:3} == "7.2" ]]; then echo "Sending coverage report"; vendor/bin/test-reporter --coverage-report clover.xml; fi
+  - if [[ ${TRAVIS_PHP_VERSION:0:3} == "7.2" ]]; then echo "Sending codecov report"; TRAVIS_CMD="" bash <(curl -s https://codecov.io/bash) -f clover.xml; fi
 
 script:
   - if [[ ${TRAVIS_PHP_VERSION:0:3} != "7.2" ]]; then NC="--no-coverage"; fi
