@@ -26,7 +26,7 @@ $api->get('/ping', function() {
 });
 
 // Methods can accept arguments, and everything is type-safe.
-$api->get('/hello/:name', function (name) {
+$api->get('/hello/:name', function ($name) {
     return "Hello, $name";
 });
 ```
