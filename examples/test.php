@@ -50,7 +50,7 @@ class Country extends \atk4\data\Model
     }
 }
 session_start();
-$db = new \atk4\data\Persistence_SQL('mysql:dbname=atk4;host=localhost', 'root', 'root');
+$db = new \atk4\data\Persistence_SQL('mysql:dbname=atk4;host=localhost', 'root', '');
 
 $api->get('/ping/', function () {
     return 'Hello, World';
