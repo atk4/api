@@ -27,20 +27,10 @@
   ],
   "require": {
     "php": ">=7.2.0",
-    "atk4/data": "dev-develop",
-    "zendframework/zend-diactoros": "^1.6"
-  },
-  "require-release": {
-    "php": ">=7.2.0",
     "atk4/data": "^2.0",
     "zendframework/zend-diactoros": "^1.6"
   },
   "require-dev": {
-    "phpunit/phpunit": "<6",
-    "atk4/schema": "dev-develop",
-    "codeclimate/php-test-reporter": "*"
-  },
-  "require-dev-release": {
     "phpunit/phpunit": "<6",
     "atk4/schema": "^2.0",
     "codeclimate/php-test-reporter": "*"
