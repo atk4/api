@@ -2,34 +2,56 @@
 
 namespace atk4\api;
 
+use atk4\data\Model;
+use Laminas\Diactoros\Request;
+use Laminas\Diactoros\Response\JsonResponse;
+use Laminas\Diactoros\ServerRequestFactory;
+use Laminas\HttpHandlerRunner\Emitter\EmitterInterface;
+use Laminas\HttpHandlerRunner\Emitter\SapiEmitter;
+
 /**
  * Main API class.
  */
 class Api
 {
-    /** @var \Zend\Diactoros\ServerRequest Request object */
+    /** @var Request Request object */
     public $request;
 
-    /** @var \Zend\Diactoros\Response\JsonResponse Response object */
-    public $response;
-
-    /** @var \Zend\Diactoros\Response\SapiEmitter Emitter object */
-    public $emitter;
-
     /** @var string */
-    protected $requestData;
+    protected $request_data;
+
+    /** @var array */
+    protected $_vars = [];
 
     /** @var string Request path */
     public $path;
 
+    /** @var JsonResponse Response object */
+    public $response;
+
+    /** @var int Response code */
+    public $response_code = 200;
+
+    /** @var EmitterInterface Emitter object */
+    public $emitter;
+
+    /** @var array Response header */
+    protected $response_headers = [];
+
+    /** @var int Response options */
+    protected $response_options = JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT;
+
     /**
      * Reads everything off globals.
      *
-     * @param \Zend\Diactoros\ServerRequest $request
+     * @param Request $request
      */
-    public function __construct($request = null)
+    public function __construct(?Request $request = null)
     {
-        $this->request = $request ?: \Zend\Diactoros\ServerRequestFactory::fromGlobals();
+        if (null !== $request) {
+            $request->getBody()->rewind(); // reset pointer of request.
+        }
+        $this->request = $request ?: ServerRequestFactory::fromGlobals();
         $this->path = $this->request->getUri()->getPath();
 
         if (isset($_SERVER['SCRIPT_NAME'], $_SERVER['REQUEST_URI'])) {
@@ -43,26 +65,15 @@ class Api
             $this->path = preg_replace($regex, '', $path, 1);
         }
 
-        $ct = $this->request->getHeader('Content-Type');
-
-        if ($ct && strtolower($ct[0]) == 'application/json') {
-            $this->requestData = json_decode($this->request->getBody()->getContents(), true);
+        if ($this->request->getHeader('Content-Type')[0] ?? null === 'application/json') {
+            $this->request_data = json_decode($this->request->getBody()->getContents(), true);
         } else {
-            $this->requestData = $this->request->getParsedBody();
+            $this->request_data = $this->request->getParsedBody();
         }
 
         // This is how we will send responses
-        $this->emitter = new \Zend\Diactoros\Response\SapiEmitter();
+        $this->emitter = new SapiEmitter();
     }
-
-    /**
-     * Do pattern matching and save extracted variables.
-     *
-     * @param string $pattern
-     *
-     * @return bool
-     */
-    protected $_vars;
 
     public function match($pattern)
     {
@@ -126,6 +137,8 @@ class Api
      *
      * @param callable $callable
      * @param array    $vars
+     *
+     * @throws \atk4\data\Exception
      */
     public function exec($callable, $vars = [])
     {
@@ -134,7 +147,7 @@ class Api
 
         // if callable function returns agile data model, then export it
         // this is important for REST API implementation
-        if ($ret instanceof \atk4\data\Model) {
+        if ($ret instanceof Model) {
             $ret = $this->exportModel($ret);
         }
 
@@ -172,11 +185,13 @@ class Api
      *
      * Extend this method to implement your own field restrictions.
      *
-     * @param \atk4\data\Model $m
+     * @param Model $m
+     *
+     * @throws \atk4\data\Exception
      *
      * @return array
      */
-    protected function exportModel(\atk4\data\Model $m)
+    protected function exportModel(Model $m)
     {
         return $m->export($this->getAllowedFields($m, 'read'));
     }
@@ -190,12 +205,15 @@ class Api
      *    - if fieldname is empty, then use model->title_field
      *    - if fieldname is not empty, then use it
      *
-     * @param \atk\data\Model $m
-     * @param string|array    $value
+     * @param Model        $m
+     * @param string|array $value
      *
-     * @return \atk4\data\Model
+     * @throws \atk4\core\Exception
+     * @throws \atk4\data\Exception
+     *
+     * @return Model
      */
-    protected function loadModelByValue(\atk4\data\Model $m, $value)
+    protected function loadModelByValue(Model $m, $value)
     {
         // value is not ID
         if (is_array($value)) {
@@ -215,22 +233,18 @@ class Api
      * It uses custom model property apiFields[$action] which should contain array of
      * allowed field names or null to allow all model fields.
      *
-     * @param \atk4\data\Model $m
-     * @param string           $action read|modify
+     * @param Model  $m
+     * @param string $action read|modify
      *
      * @return null|array of field names
      */
-    protected function getAllowedFields(\atk4\data\Model $m, $action = 'read')
+    protected function getAllowedFields(Model $m, $action = 'read')
     {
-        $fields = null;
-
         // take model only_fields into account
-        if ($m->only_fields) {
-            $fields = $m->only_fields;
-        }
+        $fields = is_array($m->only_fields) ? $m->only_fields : [];
 
         // limit by apiFields
-        if (isset($m->apiFields[$action])) {
+        if (isset($m->apiFields, $m->apiFields[$action])) {
             $allowed = $m->apiFields[$action];
             $fields = $fields ? array_intersect($fields, $allowed) : $allowed;
         }
@@ -243,8 +257,8 @@ class Api
      *
      * Extend this method to implement your own field restrictions.
      *
-     * @param \atk4\data\Model $m
-     * @param array            $data
+     * @param Model $m
+     * @param array $data
      *
      * @return array
      */
@@ -270,13 +284,12 @@ class Api
     {
         // create response object
         if (!$this->response) {
-            $this->response =
-                new \Zend\Diactoros\Response\JsonResponse(
-                    $response,
-                    200,
-                    [],
-                    JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT
-                );
+            $this->response = new JsonResponse(
+                $response,
+                $this->response_code,
+                $this->response_headers,
+                $this->response_options
+            );
         }
 
         // if there is emitter, then emit response and exit
@@ -296,12 +309,12 @@ class Api
      * @param string   $pattern
      * @param callable $callable
      *
-     * @return mixed
+     * @throws \atk4\data\Exception
      */
     public function get($pattern, $callable = null)
     {
         if ($this->request->getMethod() === 'GET' && $this->match($pattern)) {
-            return $this->exec($callable, $this->_vars);
+            $this->exec($callable, $this->_vars);
         }
     }
 
@@ -311,12 +324,12 @@ class Api
      * @param string   $pattern
      * @param callable $callable
      *
-     * @return mixed
+     * @throws \atk4\data\Exception
      */
     public function post($pattern, $callable = null)
     {
         if ($this->request->getMethod() === 'POST' && $this->match($pattern)) {
-            return $this->exec($callable, $this->_vars);
+            $this->exec($callable, $this->_vars);
         }
     }
 
@@ -326,12 +339,12 @@ class Api
      * @param string   $pattern
      * @param callable $callable
      *
-     * @return mixed
+     * @throws \atk4\data\Exception
      */
     public function patch($pattern, $callable = null)
     {
         if ($this->request->getMethod() === 'PATCH' && $this->match($pattern)) {
-            return $this->exec($callable, $this->_vars);
+            $this->exec($callable, $this->_vars);
         }
     }
 
@@ -341,12 +354,12 @@ class Api
      * @param string   $pattern
      * @param callable $callable
      *
-     * @return mixed
+     * @throws \atk4\data\Exception
      */
     public function put($pattern, $callable = null)
     {
         if ($this->request->getMethod() === 'PUT' && $this->match($pattern)) {
-            return $this->exec($callable, $this->_vars);
+            $this->exec($callable, $this->_vars);
         }
     }
 
@@ -356,38 +369,33 @@ class Api
      * @param string   $pattern
      * @param callable $callable
      *
-     * @return mixed
+     * @throws \atk4\data\Exception
      */
     public function delete($pattern, $callable = null)
     {
         if ($this->request->getMethod() === 'DELETE' && $this->match($pattern)) {
-            return $this->exec($callable, $this->_vars);
+            $this->exec($callable, $this->_vars);
         }
     }
 
     /**
      * Implement REST pattern matching.
      *
-     * @param string                    $pattern
-     * @param \atk4\data\Model|callable $model
-     * @param array                     $methods Allowed methods (read|modify|delete). By default all are allowed
+     * @param string         $pattern
+     * @param Model|callable $model
+     * @param array          $methods Allowed methods (read|modify|delete). By default all are allowed
      *
-     * @return mixed
+     * @throws \atk4\data\Exception
      */
-    public function rest($pattern, $model = null, $methods = null)
+    public function rest($pattern, $model = null, $methods = ['read', 'modify', 'delete'])
     {
-        if (!$methods) {
-            $methods = ['read', 'modify', 'delete'];
-        }
         $methods = array_map('strtolower', $methods);
 
         // GET all records
         if (in_array('read', $methods)) {
-            $f = function () use ($model) {
-                $args = func_get_args();
-
+            $f = function (...$params) use ($model) {
                 if (is_callable($model)) {
-                    $model = $this->call($model, $args);
+                    $model = $this->call($model, $params);
                 }
 
                 return $model;
@@ -397,12 +405,11 @@ class Api
 
         // GET :id - one record
         if (in_array('read', $methods)) {
-            $f = function () use ($model) {
-                $args = func_get_args();
-                $id = array_pop($args); // pop last element of args array, it's :id
+            $f = function (...$params) use ($model) {
+                $id = array_pop($params); // pop last element of args array, it's :id
 
                 if (is_callable($model)) {
-                    $model = $this->call($model, $args);
+                    $model = $this->call($model, $params);
                 }
 
                 // limit fields
@@ -418,17 +425,16 @@ class Api
         // PATCH :id - update one record (same as POST :id)
         // PUT :id - update one record (same as POST :id)
         if (in_array('modify', $methods)) {
-            $f = function () use ($model) {
-                $args = func_get_args();
-                $id = array_pop($args); // pop last element of args array, it's :id
+            $f = function (...$params) use ($model) {
+                $id = array_pop($params); // pop last element of args array, it's :id
 
                 if (is_callable($model)) {
-                    $model = $this->call($model, $args);
+                    $model = $this->call($model, $params);
                 }
 
                 // limit fields
                 $model->onlyFields($this->getAllowedFields($model, 'modify'));
-                $this->loadModelByValue($model, $id)->save($this->requestData);
+                $this->loadModelByValue($model, $id)->save($this->request_data);
                 $model->onlyFields($this->getAllowedFields($model, 'read'));
 
                 return $model->get();
@@ -440,18 +446,17 @@ class Api
 
         // POST - insert new record
         if (in_array('modify', $methods)) {
-            $f = function () use ($model) {
-                $args = func_get_args();
-
+            $f = function (...$params) use ($model) {
                 if (is_callable($model)) {
-                    $model = $this->call($model, $args);
+                    $model = $this->call($model, $params);
                 }
 
                 // limit fields
                 $model->onlyFields($this->getAllowedFields($model, 'modify'));
-                $model->unload()->save($this->requestData);
+                $model->unload()->save($this->request_data);
                 $model->onlyFields($this->getAllowedFields($model, 'read'));
 
+                $this->response_code = 201; // http code for created
                 return $model->get();
             };
             $this->post($pattern, $f);
@@ -459,12 +464,11 @@ class Api
 
         // DELETE :id - delete one record
         if (in_array('delete', $methods)) {
-            $f = function () use ($model) {
-                $args = func_get_args();
-                $id = array_pop($args); // pop last element of args array, it's :id
+            $f = function (...$params) use ($model) {
+                $id = array_pop($params); // pop last element of args array, it's :id
 
                 if (is_callable($model)) {
-                    $model = $this->call($model, $args);
+                    $model = $this->call($model, $params);
                 }
 
                 // limit fields (not necessary, but will limit field list for performance)
@@ -490,22 +494,20 @@ class Api
             }
         }
 
-        $this->response =
-            new \Zend\Diactoros\Response\JsonResponse(
-                [
-                    'error'=> [
-                        'code'   => $e->getCode(),
-                        'message'=> $e->getMessage(),
-                        'args'   => $params,
-                    ],
+        $this->response = new JsonResponse(
+            [
+                'error' => [
+                    'code'    => $e->getCode(),
+                    'message' => $e->getMessage(),
+                    'args'    => $params,
                 ],
-                $e->getCode() ?: 500,
-                [],
-                JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT
-            );
+            ],
+            (int) $e->getCode() > 0 ? $e->getCode() : 500,
+            $this->response_headers,
+            $this->response_options
+        );
 
-        $emitter = new \Zend\Diactoros\Response\SapiEmitter();
-        $emitter->emit($this->response);
+        (new SapiEmitter())->emit($this->response);
         exit;
     }
 }

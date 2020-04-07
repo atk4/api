@@ -2,6 +2,8 @@
 
 namespace atk4\api\tests;
 
+use Laminas\Diactoros\Request;
+
 class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
 {
     public $api;
@@ -13,7 +15,7 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
 
     public function assertRequest($response, $method, $uri = '/', $data = null)
     {
-        $request = new \Zend\Diactoros\Request(
+        $request = new Request(
             'http://localhost'.$uri,
             $method,
             'php://memory',
@@ -43,7 +45,7 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
     {
 
         // create fake request
-        $request = new \Zend\Diactoros\Request(
+        $request = new Request(
             'http://localhost'.$uri,
             $method,
             'php://memory',

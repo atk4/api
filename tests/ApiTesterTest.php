@@ -26,8 +26,17 @@ class ApiTesterTest extends ApiTester
         $this->assertReq('pong', function () {
             return 'pong';
         }, 'POST');
+
         $this->assertReq('pong', function () {
             return 'pong';
         }, 'PATCH');
+
+        $this->assertReq('pong', function () {
+            return 'pong';
+        }, 'PUT');
+
+        $this->assertReq('pong', function () {
+            return 'pong';
+        }, 'DELETE');
     }
 }
