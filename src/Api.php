@@ -41,6 +41,7 @@ class Api
     /** @var int Response options */
     protected $response_options = JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT;
 
+
     /**
      * Reads everything off globals.
      *
@@ -193,7 +194,7 @@ class Api
      */
     protected function exportModel(Model $m)
     {
-        return $m->export($this->getAllowedFields($m, 'read'));
+        return $m->export($this->getAllowedFields($m, 'read'), null, false);
     }
 
     /**
@@ -412,12 +413,26 @@ class Api
                     $model = $this->call($model, $params);
                 }
 
-                // limit fields
-                $model->onlyFields($this->getAllowedFields($model, 'read'));
+                $this->loadModelByValue($model, $id);
 
-                // load model and get field values
-                return $this->loadModelByValue($model, $id)->get();
+                //calculate only once
+                $allowed_fields = $this->getAllowedFields($model, 'read');
+                $data = [];
+                // get all field-elements
+                foreach ($model->elements as $field => $f) {
+                    //only use allowed fields
+                    if(!in_array($field, $allowed_fields)) {
+                        continue;
+                    }
+
+                    if ($f instanceof \atk4\data\Field) {
+                        $data[$field] = $f->toString();
+                    }
+                }
+
+                return $data;
             };
+
             $this->get($pattern.'/:id', $f);
         }
 
