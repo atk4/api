@@ -12,32 +12,37 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
     /** @var Persistence\SQL */
     protected $db;
 
-    /** @var Country */
-    protected $model;
-
     /** @var Api */
-    private $api;
+    protected $api;
+
+    protected static $init = false;
 
     public static function tearDownAfterClass()
     {
-        unlink('./sqlite.db');
+        unlink(__DIR__ . '/sqlite.db');
     }
 
     public function setUp()
     {
         parent::setUp();
-        touch('./sqlite.db');
+        $filename = __DIR__ . '/sqlite.db';
+        touch($filename);
 
-        $this->db = new Persistence\SQL('sqlite:./sqlite.db');
-        $this->model = new Country($this->db);
-        Migration::of($this->model)->run();
+        $this->db = new Persistence\SQL('sqlite:' . $filename);
+        if(!self::$init) {
+            self::$init = true;
+            Migration::of(new Country($this->db))->run();
+        }
     }
 
-    public function processRequest(Request $request)
+    public function processRequest(Request $request, $model = null)
     {
+
+        $model_default = new Country($this->db);
+
         $this->api = new Api($request);
         $this->api->emitter = false;
-        $this->api->rest('/client', $this->model);
+        $this->api->rest('/client', $model ?? $model_default);
 
         return json_decode($this->api->response->getBody()->getContents(), true);
     }
@@ -51,6 +56,9 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
             'iso3'      => 'ITA',
             'numcode'   => '666',
             'phonecode' => '39',
+            'date'  => null,
+            'datetime'  => null,
+            'time'      => null
         ];
 
         $request = new Request(
@@ -68,11 +76,54 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
         $this->assertEquals([
             'id'        => '1',
             'name'      => 'test',
-            'sys_name'  => 'test',
+            'nicename'  => 'test',
             'iso'       => 'IT',
             'iso3'      => 'ITA',
             'numcode'   => '666',
             'phonecode' => '39',
+            'date'  => null,
+            'datetime'  => null,
+            'time'      => null
+        ], $response);
+    }
+
+    public function testCreate2()
+    {
+        $data = [
+            'name'      => 'test2',
+            'sys_name'  => 'test2',
+            'iso'       => 'DE',
+            'iso3'      => 'DEU',
+            'numcode'   => '999',
+            'phonecode' => '43',
+            'date'  => null,
+            'datetime'  => null,
+            'time'      => null
+        ];
+
+        $request = new Request(
+            'http://localhost/client',
+            'POST',
+            'php://memory',
+            [
+                'Content-Type'  => 'application/json',
+            ]
+        );
+        $request->getBody()->write(json_encode($data));
+
+        $response = $this->processRequest($request);
+        $this->assertEquals(201, $this->api->response_code);
+        $this->assertEquals([
+            'id'        => '2',
+            'name'      => 'test2',
+            'nicename'  => 'test2',
+            'iso'       => 'DE',
+            'iso3'      => 'DEU',
+            'numcode'   => '999',
+            'phonecode' => '43',
+            'date'  => null,
+            'datetime'  => null,
+            'time'      => null
         ], $response);
     }
 
@@ -91,34 +142,14 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
         $this->assertEquals([
             'id'        => '1',
             'name'      => 'test',
-            'sys_name'  => 'test',
+            'nicename'  => 'test',
             'iso'       => 'IT',
             'iso3'      => 'ITA',
             'numcode'   => '666',
             'phonecode' => '39',
-        ], $response);
-    }
-
-    public function testGETOneByField()
-    {
-        $request = new Request(
-            'http://localhost/client/name:test',
-            'GET',
-            'php://memory',
-            [
-                'Content-Type'  => 'application/json',
-            ]
-        );
-
-        $response = $this->processRequest($request);
-        $this->assertEquals([
-            'id'        => '1',
-            'name'      => 'test',
-            'sys_name'  => 'test',
-            'iso'       => 'IT',
-            'iso3'      => 'ITA',
-            'numcode'   => '666',
-            'phonecode' => '39',
+            'date'  => null,
+            'datetime'  => null,
+            'time'      => null
         ], $response);
     }
 
@@ -135,7 +166,7 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
 
         $response = $this->processRequest($request);
         $this->assertEquals([
-            0 => [
+            [
                 'id'        => '1',
                 'name'      => 'test',
                 'nicename'  => 'test',
@@ -143,7 +174,22 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
                 'iso3'      => 'ITA',
                 'numcode'   => '666',
                 'phonecode' => '39',
+                'date'  => null,
+                'datetime'  => null,
+                'time'      => null
             ],
+            [
+                'id'        => '2',
+                'name'      => 'test2',
+                'nicename'  => 'test2',
+                'iso'       => 'DE',
+                'iso3'      => 'DEU',
+                'numcode'   => '999',
+                'phonecode' => '43',
+                'date'  => null,
+                'datetime'  => null,
+                'time'      => null
+            ]
         ], $response);
     }
 
@@ -159,7 +205,9 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
         );
 
         $data = $this->processRequest($request);
-        $data['name'] = 'test modified';
+        $data['sys_name'] = 'test modified';
+        $data['name'] = $data['nicename'];
+        unset($data['nicename']);
 
         $request = $request->withMethod('POST');
         $request->getBody()->write(json_encode($data));
@@ -168,11 +216,14 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
         $this->assertEquals([
             'id'        => '1',
             'name'      => 'test modified',
-            'sys_name'  => 'test',
+            'nicename'  => 'test',
             'iso'       => 'IT',
             'iso3'      => 'ITA',
             'numcode'   => '666',
             'phonecode' => '39',
+            'date'  => null,
+            'datetime'  => null,
+            'time'      => null
         ], $response);
     }
 
@@ -189,39 +240,97 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
             ]
         );
 
-        $this->processRequest($request);
+        $response = $this->processRequest($request);
+        $this->assertEquals([], $response);
+    }
 
-        // check via getAll
+    public function testSerialization()
+    {
+        $date = $datetime = new \Datetime();
+        $date->setTime(6,6,6); // this is for you imanst ;)
+
+        $data = [
+            'sys_name'      => 'test_time',
+            'name'  => 'test',
+            'iso'       => 'IT',
+            'iso3'      => 'ITA',
+            'numcode'   => '666',
+            'phonecode' => '39',
+            'date'      => $date->format('Y-m-d'),
+            'datetime'  => $date->format('Y-m-d H:i:s'),
+            'time'      => $date->format('H:i:s'),
+        ];
+
+        // create new record
         $request = new Request(
             'http://localhost/client',
+            'POST',
+            'php://memory',
+            [
+                'Content-Type'  => 'application/json',
+            ]
+        );
+        $request->getBody()->write(json_encode($data));
+        $response = $this->processRequest($request);
+
+        // check on post
+        $this->assertEquals([
+            'id'        => '3',
+            'name'      => 'test_time',
+            'nicename'  => 'test',
+            'iso'       => 'IT',
+            'iso3'      => 'ITA',
+            'numcode'   => '666',
+            'phonecode' => '39',
+            'date'      => $date->format('Y-m-d'),
+            'datetime'  => $date->format('Y-m-d\TH:i:sP'),
+            'time'      => $date->format('H:i:s'),
+        ], $response);
+
+        // retrive created record
+        $request = new Request(
+            'http://localhost/client/sys_name:test_time',
             'GET',
             'php://memory',
             [
                 'Content-Type'  => 'application/json',
             ]
         );
-
         $response = $this->processRequest($request);
-        $this->assertEquals([], $response);
-    }
 
-    public function testOnlyApiFields()
-    {
-        $this->model->apiFields = [
-            'read' => [
-                'name',
-                'iso',
-                'numcode',
-            ],
-        ];
-
-        $data = [
-            'name'      => 'test',
-            'sys_name'  => 'test',
+        // check on get
+        $this->assertEquals([
+            'id'        => '3',
+            'name'      => 'test_time',
+            'nicename'  => 'test',
             'iso'       => 'IT',
             'iso3'      => 'ITA',
             'numcode'   => '666',
             'phonecode' => '39',
+            'date'      => $date->format('Y-m-d'),
+            'datetime'  => $date->format('Y-m-d\TH:i:sP'),
+            'time'      => $date->format('H:i:s'),
+        ], $response);
+    }
+
+    public function testOnlyApiFields()
+    {
+
+        $model = new Country($this->db);
+        $model->apiFields = [
+            'read' => [
+                'sys_name',
+                'iso',
+                'iso3',
+                'numcode',
+            ]
+        ];
+
+        $data = [
+            'name'      => 'USA',
+            'iso'       => 'US',
+            'iso3'      => 'USA',
+            'numcode'   => '999'
         ];
 
         $request = new Request(
@@ -234,12 +343,13 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
         );
         $request->getBody()->write(json_encode($data));
 
-        $response = $this->processRequest($request);
+        $response = $this->processRequest($request, $model);
         $this->assertEquals(201, $this->api->response_code);
         $this->assertEquals([
-            'name'    => 'test',
-            'iso'     => 'IT',
-            'numcode' => '666',
+            'name'      => 'USA',
+            'iso'       => 'US',
+            'iso3'      => 'USA',
+            'numcode'   => '999'
         ], $response);
     }
 }
@@ -274,6 +384,10 @@ class Country extends \atk4\data\Model
         $this->addField('iso3', ['caption'=>'ISO3', 'required'=>true, 'type'=>'string']);
         $this->addField('numcode', ['caption'=>'ISO Numeric Code', 'type'=>'number', 'required'=>true]);
         $this->addField('phonecode', ['caption'=>'Phone Prefix', 'type'=>'number']);
+
+        $this->addField('date', ['caption'=>'Test Datetime', 'type'=>'date']);
+        $this->addField('datetime', ['caption'=>'Test Datetime', 'type'=>'datetime']);
+        $this->addField('time', ['caption'=>'Test Datetime', 'type'=>'time']);
 
         $this->onHook('beforeSave', function ($m) {
             if (!$m['sys_name']) {

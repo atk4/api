@@ -2,6 +2,7 @@
 
 namespace atk4\api;
 
+use atk4\data\Field;
 use atk4\data\Model;
 use Laminas\Diactoros\Request;
 use Laminas\Diactoros\Response\JsonResponse;
@@ -41,6 +42,12 @@ class Api
     /** @var int Response options */
     protected $response_options = JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT;
 
+    /**
+     * @var bool If set to true, the first array element of Model->export
+     * will be returned (GET single record)
+     * If not, the array will be returned as-is
+     */
+    public $single_record = true;
 
     /**
      * Reads everything off globals.
@@ -149,12 +156,43 @@ class Api
         // if callable function returns agile data model, then export it
         // this is important for REST API implementation
         if ($ret instanceof Model) {
-            $ret = $this->exportModel($ret);
+
+            $data = [];
+
+            $allowed_fields = $this->getAllowedFields($ret, 'read');
+            if ($this->single_record) {
+                /** @var Field $field */
+                foreach($ret->getFields() as $fieldName => $field) {
+                    if(!in_array($fieldName, $allowed_fields)) {
+                        continue;
+                    }
+                    $data[$field->actual ?? $fieldName] = $field->toString();
+                }
+            } else {
+                foreach ($ret as $m) {
+                    /** @var Model $m */
+                    $record = [];
+                    /** @var Field $field */
+                    foreach ($ret->getFields() as $fieldName => $field) {
+                        if(!in_array($fieldName, $allowed_fields)) {
+                            continue;
+                        }
+                        $record[$field->actual ?? $fieldName] = $field->toString();
+                    }
+                    $data[] = $record;
+                }
+            }
+
+            $ret = $data;
         }
 
         // no response, just step out
         if ($ret === null) {
             return;
+        }
+
+        if ($ret === true) { // manage delete
+            $ret = [];
         }
 
         // emit successful response
@@ -194,7 +232,7 @@ class Api
      */
     protected function exportModel(Model $m)
     {
-        return $m->export($this->getAllowedFields($m, 'read'), null, false);
+        return $m->export($this->getAllowedFields($m, 'read'), null, true);
     }
 
     /**
@@ -242,7 +280,7 @@ class Api
     protected function getAllowedFields(Model $m, $action = 'read')
     {
         // take model only_fields into account
-        $fields = is_array($m->only_fields) ? $m->only_fields : [];
+        $fields = is_array($m->only_fields) && !empty($m->only_fields) ? $m->only_fields : array_keys($m->getFields());
 
         // limit by apiFields
         if (isset($m->apiFields, $m->apiFields[$action])) {
@@ -297,7 +335,7 @@ class Api
         // for testing purposes there can be situations when emitter is disabled. then do nothing.
         if ($this->emitter) {
             $this->emitter->emit($this->response);
-            exit;
+            exit; // @todo find a solution to remove this exit.
         }
 
         // @todo Should we also stop script execution if no emitter is defined or just ignore that?
@@ -395,6 +433,7 @@ class Api
         // GET all records
         if (in_array('read', $methods)) {
             $f = function (...$params) use ($model) {
+                $this->single_record = false;
                 if (is_callable($model)) {
                     $model = $this->call($model, $params);
                 }
@@ -413,24 +452,11 @@ class Api
                     $model = $this->call($model, $params);
                 }
 
-                $this->loadModelByValue($model, $id);
+                // limit fields
+                $model->onlyFields($this->getAllowedFields($model, 'read'));
 
-                //calculate only once
-                $allowed_fields = $this->getAllowedFields($model, 'read');
-                $data = [];
-                // get all field-elements
-                foreach ($model->elements as $field => $f) {
-                    //only use allowed fields
-                    if(!in_array($field, $allowed_fields)) {
-                        continue;
-                    }
-
-                    if ($f instanceof \atk4\data\Field) {
-                        $data[$field] = $f->toString();
-                    }
-                }
-
-                return $data;
+                // load model and get field values
+                return $this->loadModelByValue($model, $id);
             };
 
             $this->get($pattern.'/:id', $f);
@@ -452,7 +478,7 @@ class Api
                 $this->loadModelByValue($model, $id)->save($this->request_data);
                 $model->onlyFields($this->getAllowedFields($model, 'read'));
 
-                return $model->get();
+                return $model;
             };
             $this->patch($pattern.'/:id', $f);
             $this->post($pattern.'/:id', $f);
@@ -472,7 +498,8 @@ class Api
                 $model->onlyFields($this->getAllowedFields($model, 'read'));
 
                 $this->response_code = 201; // http code for created
-                return $model->get();
+
+                return $model;
             };
             $this->post($pattern, $f);
         }
