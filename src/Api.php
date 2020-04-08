@@ -163,7 +163,7 @@ class Api
                 $data = $this->exportModel($ret, $allowed_fields);
             } else {
                 foreach ($ret as $m) {
-                    $data[] = $this->exportModel($ret, $allowed_fields);
+                    $data[] = $this->exportModel($m, $allowed_fields);
                 }
             }
 
