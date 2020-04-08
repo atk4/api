@@ -44,8 +44,8 @@ class Api
 
     /**
      * @var bool If set to true, the first array element of Model->export
-     * will be returned (GET single record)
-     * If not, the array will be returned as-is
+     *           will be returned (GET single record)
+     *           If not, the array will be returned as-is
      */
     public $single_record = true;
 
@@ -156,14 +156,13 @@ class Api
         // if callable function returns agile data model, then export it
         // this is important for REST API implementation
         if ($ret instanceof Model) {
-
             $data = [];
 
             $allowed_fields = $this->getAllowedFields($ret, 'read');
             if ($this->single_record) {
                 /** @var Field $field */
-                foreach($ret->getFields() as $fieldName => $field) {
-                    if(!in_array($fieldName, $allowed_fields)) {
+                foreach ($ret->getFields() as $fieldName => $field) {
+                    if (!in_array($fieldName, $allowed_fields)) {
                         continue;
                     }
                     $data[$field->actual ?? $fieldName] = $field->toString();
@@ -174,7 +173,7 @@ class Api
                     $record = [];
                     /** @var Field $field */
                     foreach ($ret->getFields() as $fieldName => $field) {
-                        if(!in_array($fieldName, $allowed_fields)) {
+                        if (!in_array($fieldName, $allowed_fields)) {
                             continue;
                         }
                         $record[$field->actual ?? $fieldName] = $field->toString();

@@ -19,17 +19,17 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
 
     public static function tearDownAfterClass()
     {
-        unlink(__DIR__ . '/sqlite.db');
+        unlink(__DIR__.'/sqlite.db');
     }
 
     public function setUp()
     {
         parent::setUp();
-        $filename = __DIR__ . '/sqlite.db';
+        $filename = __DIR__.'/sqlite.db';
         touch($filename);
 
-        $this->db = new Persistence\SQL('sqlite:' . $filename);
-        if(!self::$init) {
+        $this->db = new Persistence\SQL('sqlite:'.$filename);
+        if (!self::$init) {
             self::$init = true;
             Migration::of(new Country($this->db))->run();
         }
@@ -37,7 +37,6 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
 
     public function processRequest(Request $request, $model = null)
     {
-
         $model_default = new Country($this->db);
 
         $this->api = new Api($request);
@@ -56,9 +55,9 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
             'iso3'      => 'ITA',
             'numcode'   => '666',
             'phonecode' => '39',
-            'date'  => null,
+            'date'      => null,
             'datetime'  => null,
-            'time'      => null
+            'time'      => null,
         ];
 
         $request = new Request(
@@ -81,9 +80,9 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
             'iso3'      => 'ITA',
             'numcode'   => '666',
             'phonecode' => '39',
-            'date'  => null,
+            'date'      => null,
             'datetime'  => null,
-            'time'      => null
+            'time'      => null,
         ], $response);
     }
 
@@ -96,9 +95,9 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
             'iso3'      => 'DEU',
             'numcode'   => '999',
             'phonecode' => '43',
-            'date'  => null,
+            'date'      => null,
             'datetime'  => null,
-            'time'      => null
+            'time'      => null,
         ];
 
         $request = new Request(
@@ -121,9 +120,9 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
             'iso3'      => 'DEU',
             'numcode'   => '999',
             'phonecode' => '43',
-            'date'  => null,
+            'date'      => null,
             'datetime'  => null,
-            'time'      => null
+            'time'      => null,
         ], $response);
     }
 
@@ -147,9 +146,9 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
             'iso3'      => 'ITA',
             'numcode'   => '666',
             'phonecode' => '39',
-            'date'  => null,
+            'date'      => null,
             'datetime'  => null,
-            'time'      => null
+            'time'      => null,
         ], $response);
     }
 
@@ -174,9 +173,9 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
                 'iso3'      => 'ITA',
                 'numcode'   => '666',
                 'phonecode' => '39',
-                'date'  => null,
+                'date'      => null,
                 'datetime'  => null,
-                'time'      => null
+                'time'      => null,
             ],
             [
                 'id'        => '2',
@@ -186,10 +185,10 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
                 'iso3'      => 'DEU',
                 'numcode'   => '999',
                 'phonecode' => '43',
-                'date'  => null,
+                'date'      => null,
                 'datetime'  => null,
-                'time'      => null
-            ]
+                'time'      => null,
+            ],
         ], $response);
     }
 
@@ -221,9 +220,9 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
             'iso3'      => 'ITA',
             'numcode'   => '666',
             'phonecode' => '39',
-            'date'  => null,
+            'date'      => null,
             'datetime'  => null,
-            'time'      => null
+            'time'      => null,
         ], $response);
     }
 
@@ -247,18 +246,18 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
     public function testSerialization()
     {
         $date = $datetime = new \Datetime();
-        $date->setTime(6,6,6); // this is for you imanst ;)
+        $date->setTime(6, 6, 6); // this is for you imanst ;)
 
         $data = [
             'sys_name'      => 'test_time',
-            'name'  => 'test',
-            'iso'       => 'IT',
-            'iso3'      => 'ITA',
-            'numcode'   => '666',
-            'phonecode' => '39',
-            'date'      => $date->format('Y-m-d'),
-            'datetime'  => $date->format('Y-m-d H:i:s'),
-            'time'      => $date->format('H:i:s'),
+            'name'          => 'test',
+            'iso'           => 'IT',
+            'iso3'          => 'ITA',
+            'numcode'       => '666',
+            'phonecode'     => '39',
+            'date'          => $date->format('Y-m-d'),
+            'datetime'      => $date->format('Y-m-d H:i:s'),
+            'time'          => $date->format('H:i:s'),
         ];
 
         // create new record
@@ -315,7 +314,6 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
 
     public function testOnlyApiFields()
     {
-
         $model = new Country($this->db);
         $model->apiFields = [
             'read' => [
@@ -323,14 +321,14 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
                 'iso',
                 'iso3',
                 'numcode',
-            ]
+            ],
         ];
 
         $data = [
             'name'      => 'USA',
             'iso'       => 'US',
             'iso3'      => 'USA',
-            'numcode'   => '999'
+            'numcode'   => '999',
         ];
 
         $request = new Request(
@@ -349,7 +347,7 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
             'name'      => 'USA',
             'iso'       => 'US',
             'iso3'      => 'USA',
-            'numcode'   => '999'
+            'numcode'   => '999',
         ], $response);
     }
 }
