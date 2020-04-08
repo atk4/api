@@ -208,7 +208,7 @@ class Api
      *
      * Extend this method to implement your own field restrictions.
      *
-     * @param Model $m Model
+     * @param Model $m              Model
      * @param array $allowed_fields Allowed fields
      *
      * @throws \atk4\data\Exception
