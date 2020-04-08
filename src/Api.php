@@ -160,25 +160,10 @@ class Api
 
             $allowed_fields = $this->getAllowedFields($ret, 'read');
             if ($this->single_record) {
-                /** @var Field $field */
-                foreach ($ret->getFields() as $fieldName => $field) {
-                    if (!in_array($fieldName, $allowed_fields)) {
-                        continue;
-                    }
-                    $data[$field->actual ?? $fieldName] = $field->toString();
-                }
+                $data = $this->exportModel($ret, $allowed_fields);
             } else {
                 foreach ($ret as $m) {
-                    /** @var Model $m */
-                    $record = [];
-                    /** @var Field $field */
-                    foreach ($ret->getFields() as $fieldName => $field) {
-                        if (!in_array($fieldName, $allowed_fields)) {
-                            continue;
-                        }
-                        $record[$field->actual ?? $fieldName] = $field->toString();
-                    }
-                    $data[] = $record;
+                    $data[] = $this->exportModel($ret, $allowed_fields);
                 }
             }
 
@@ -223,15 +208,23 @@ class Api
      *
      * Extend this method to implement your own field restrictions.
      *
-     * @param Model $m
+     * @param Model $m Model
+     * @param array $allowed_fields Allowed fields
      *
      * @throws \atk4\data\Exception
+     * @throws \atk4\core\Exception
      *
      * @return array
      */
-    protected function exportModel(Model $m)
+    protected function exportModel(Model $m, array $allowed_fields = [])
     {
-        return $m->export($this->getAllowedFields($m, 'read'), null, true);
+        $data = [];
+        foreach ($allowed_fields as $fieldName) {
+            $field = $m->getField($fieldName);
+            $data[$field->actual ?? $fieldName] = $field->toString();
+        }
+
+        return $data;
     }
 
     /**
