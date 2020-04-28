@@ -61,7 +61,7 @@ class Api
             $script = $_SERVER['SCRIPT_NAME'];
             $path = $_SERVER['REQUEST_URI'];
 
-            $regex = '|^'.preg_quote(dirname($script)).'(/'.preg_quote(basename($script)).')?|i';
+            $regex = '|^' . preg_quote(dirname($script)) . '(/' . preg_quote(basename($script)) . ')?|i';
             $this->path = preg_replace($regex, '', $path, 1);
         }
 
@@ -418,7 +418,7 @@ class Api
                 // load model and get field values
                 return $this->loadModelByValue($model, $id)->get();
             };
-            $this->get($pattern.'/:id', $f);
+            $this->get($pattern . '/:id', $f);
         }
 
         // POST :id - update one record
@@ -439,9 +439,9 @@ class Api
 
                 return $model->get();
             };
-            $this->patch($pattern.'/:id', $f);
-            $this->post($pattern.'/:id', $f);
-            $this->put($pattern.'/:id', $f);
+            $this->patch($pattern . '/:id', $f);
+            $this->post($pattern . '/:id', $f);
+            $this->put($pattern . '/:id', $f);
         }
 
         // POST - insert new record
@@ -476,7 +476,7 @@ class Api
 
                 return !$model->delete($id)->loaded();
             };
-            $this->delete($pattern.'/:id', $f);
+            $this->delete($pattern . '/:id', $f);
         }
     }
 

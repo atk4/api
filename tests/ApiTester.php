@@ -16,7 +16,7 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
     public function assertRequest($response, $method, $uri = '/', $data = null)
     {
         $request = new Request(
-            'http://localhost'.$uri,
+            'http://localhost' . $uri,
             $method,
             'php://memory',
             [
@@ -46,7 +46,7 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
 
         // create fake request
         $request = new Request(
-            'http://localhost'.$uri,
+            'http://localhost' . $uri,
             $method,
             'php://memory',
             [
