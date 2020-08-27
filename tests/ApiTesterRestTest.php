@@ -264,7 +264,7 @@ class Country extends \atk4\data\Model
     /**
      * @throws \atk4\core\Exception
      */
-    public function init()
+    protected function init()
     {
         parent::init();
         $this->addField('name', ['actual'=>'nicename', 'required'=>true, 'type'=>'string']);
