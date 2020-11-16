@@ -1,14 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace atk4\api\tests;
 
+use atk4\schema\PhpunitTestCase;
 use Laminas\Diactoros\Request;
 
-class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
+class ApiTester extends PhpunitTestCase
 {
     public $api;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->api = new \atk4\api\Api();
     }
@@ -20,7 +23,7 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
             $method,
             'php://memory',
             [
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
             ]
         );
 
@@ -43,14 +46,13 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
      */
     public function assertApi($response, $apiBuild, $uri = '/ping', $method = 'GET', $data = null)
     {
-
         // create fake request
         $request = new Request(
             'http://localhost' . $uri,
             $method,
             'php://memory',
             [
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
             ]
         );
 
@@ -64,7 +66,7 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
         $apiBuild($api);
 
         $ret = json_decode($api->response->getBody()->getContents(), true);
-        $this->assertEquals($response, $ret);
+        $this->assertSame($response, $ret);
     }
 
     /**
@@ -81,7 +83,7 @@ class ApiTester extends \atk4\core\PHPUnit_AgileTestCase
 
         $m = strtolower($method);
         $this->assertApi($response, function ($api) use ($handler, $uri, $m) {
-            $api->$m($uri, $handler);
+            $api->{$m}($uri, $handler);
         }, $uri, $method);
     }
 }

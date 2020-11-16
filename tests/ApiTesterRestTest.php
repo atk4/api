@@ -1,160 +1,145 @@
 <?php
 
+declare(strict_types=1);
+
 namespace atk4\api\tests;
 
 use atk4\api\Api;
-use atk4\data\Persistence;
-use atk4\schema\Migration;
+use atk4\api\tests\Model\Country;
+use atk4\schema\PhpunitTestCase;
 use Laminas\Diactoros\Request;
 
-class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
+class ApiTesterRestTest extends PhpunitTestCase
 {
-    /** @var Persistence\SQL */
-    protected $db;
-
     /** @var Country */
     protected $model;
 
     /** @var Api */
     private $api;
 
-    public static function tearDownAfterClass()
-    {
-        unlink('./sqlite.db');
-    }
-
-    public function setUp()
-    {
-        parent::setUp();
-        touch('./sqlite.db');
-
-        $this->db = new Persistence\SQL('sqlite:./sqlite.db');
-        $this->model = new Country($this->db);
-        Migration::of($this->model)->run();
-    }
-
     public function processRequest(Request $request)
     {
         $this->api = new Api($request);
         $this->api->emitter = false;
-        $this->api->rest('/client', $this->model);
+        $this->api->rest('/country', clone $this->model);
 
         return json_decode($this->api->response->getBody()->getContents(), true);
     }
 
-    public function testCreate()
+    public function setupModel()
     {
+        $this->model = new Country($this->db);
+        $this->getMigrator($this->model)->create();
+    }
+
+    public function testAll()
+    {
+        $this->setupModel();
+
+        // Create new record
         $data = [
-            'name'      => 'test',
-            'sys_name'  => 'test',
-            'iso'       => 'IT',
-            'iso3'      => 'ITA',
-            'numcode'   => '666',
-            'phonecode' => '39',
+            'name' => 'test',
+            'sys_name' => 'test',
+            'iso' => 'IT',
+            'iso3' => 'ITA',
+            'numcode' => 666,
+            'phonecode' => 39,
         ];
 
         $request = new Request(
-            'http://localhost/client',
+            'http://localhost/country',
             'POST',
             'php://memory',
             [
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
             ]
         );
         $request->getBody()->write(json_encode($data));
 
         $response = $this->processRequest($request);
-        $this->assertEquals(201, $this->api->response_code);
-        $this->assertEquals([
-            'id'        => '1',
-            'name'      => 'test',
-            'sys_name'  => 'test',
-            'iso'       => 'IT',
-            'iso3'      => 'ITA',
-            'numcode'   => '666',
-            'phonecode' => '39',
+        $this->assertSame(201, $this->api->response_code);
+        $this->assertSame([
+            'id' => '1',
+            'name' => 'test',
+            'sys_name' => 'test',
+            'iso' => 'IT',
+            'iso3' => 'ITA',
+            'numcode' => 666,
+            'phonecode' => 39,
         ], $response);
-    }
 
-    public function testGETOne()
-    {
+        // Request one record by id
         $request = new Request(
-            'http://localhost/client/1',
+            'http://localhost/country/1',
             'GET',
             'php://memory',
             [
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
             ]
         );
 
         $response = $this->processRequest($request);
-        $this->assertEquals([
-            'id'        => '1',
-            'name'      => 'test',
-            'sys_name'  => 'test',
-            'iso'       => 'IT',
-            'iso3'      => 'ITA',
-            'numcode'   => '666',
-            'phonecode' => '39',
+        $this->assertSame([
+            'id' => '1',
+            'name' => 'test',
+            'sys_name' => 'test',
+            'iso' => 'IT',
+            'iso3' => 'ITA',
+            'numcode' => 666,
+            'phonecode' => 39,
         ], $response);
-    }
 
-    public function testGETOneByField()
-    {
+        // Request one record by value of some other field
         $request = new Request(
-            'http://localhost/client/name:test',
+            'http://localhost/country/name:test',
             'GET',
             'php://memory',
             [
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
             ]
         );
 
         $response = $this->processRequest($request);
-        $this->assertEquals([
-            'id'        => '1',
-            'name'      => 'test',
-            'sys_name'  => 'test',
-            'iso'       => 'IT',
-            'iso3'      => 'ITA',
-            'numcode'   => '666',
-            'phonecode' => '39',
+        $this->assertSame([
+            'id' => '1',
+            'name' => 'test',
+            'sys_name' => 'test',
+            'iso' => 'IT',
+            'iso3' => 'ITA',
+            'numcode' => 666,
+            'phonecode' => 39,
         ], $response);
-    }
 
-    public function testGETAll()
-    {
+        // Request all records
         $request = new Request(
-            'http://localhost/client',
+            'http://localhost/country',
             'GET',
             'php://memory',
             [
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
             ]
         );
 
         $response = $this->processRequest($request);
-        $this->assertEquals([
+        $this->assertSame([
             0 => [
-                'id'        => '1',
-                'name'      => 'test',
-                'nicename'  => 'test',
-                'iso'       => 'IT',
-                'iso3'      => 'ITA',
-                'numcode'   => '666',
-                'phonecode' => '39',
+                'id' => '1',
+                'nicename' => 'test',
+                'name' => 'test',
+                'iso' => 'IT',
+                'iso3' => 'ITA',
+                'numcode' => 666,
+                'phonecode' => 39,
             ],
         ], $response);
-    }
 
-    public function testModify()
-    {
+        // Modify record data
         $request = new Request(
-            'http://localhost/client/1',
+            'http://localhost/country/1',
             'GET',
             'php://memory',
             [
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
             ]
         );
 
@@ -165,27 +150,23 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
         $request->getBody()->write(json_encode($data));
 
         $response = $this->processRequest($request);
-        $this->assertEquals([
-            'id'        => '1',
-            'name'      => 'test modified',
-            'sys_name'  => 'test',
-            'iso'       => 'IT',
-            'iso3'      => 'ITA',
-            'numcode'   => '666',
-            'phonecode' => '39',
+        $this->assertSame([
+            'id' => '1',
+            'name' => 'test modified',
+            'sys_name' => 'test',
+            'iso' => 'IT',
+            'iso3' => 'ITA',
+            'numcode' => 666,
+            'phonecode' => 39,
         ], $response);
-    }
 
-    public function testDelete()
-    {
-
-        // delete record
+        // Delete record
         $request = new Request(
-            'http://localhost/client/1',
+            'http://localhost/country/1',
             'DELETE',
             'php://memory',
             [
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
             ]
         );
 
@@ -193,20 +174,18 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
 
         // check via getAll
         $request = new Request(
-            'http://localhost/client',
+            'http://localhost/country',
             'GET',
             'php://memory',
             [
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
             ]
         );
 
         $response = $this->processRequest($request);
-        $this->assertEquals([], $response);
-    }
+        $this->assertSame([], $response);
 
-    public function testOnlyApiFields()
-    {
+        // Limit available model fields by using apiFields property
         $this->model->apiFields = [
             'read' => [
                 'name',
@@ -216,91 +195,30 @@ class ApiTesterRestTest extends \atk4\core\PHPUnit_AgileTestCase
         ];
 
         $data = [
-            'name'      => 'test',
-            'sys_name'  => 'test',
-            'iso'       => 'IT',
-            'iso3'      => 'ITA',
-            'numcode'   => '666',
-            'phonecode' => '39',
+            'name' => 'test',
+            'sys_name' => 'test',
+            'iso' => 'IT',
+            'iso3' => 'ITA',
+            'numcode' => 666,
+            'phonecode' => 39,
         ];
 
         $request = new Request(
-            'http://localhost/client',
+            'http://localhost/country',
             'POST',
             'php://memory',
             [
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
             ]
         );
         $request->getBody()->write(json_encode($data));
 
         $response = $this->processRequest($request);
-        $this->assertEquals(201, $this->api->response_code);
-        $this->assertEquals([
-            'name'    => 'test',
-            'iso'     => 'IT',
-            'numcode' => '666',
+        $this->assertSame(201, $this->api->response_code);
+        $this->assertSame([
+            'name' => 'test',
+            'iso' => 'IT',
+            'numcode' => 666,
         ], $response);
-    }
-}
-
-class Country extends \atk4\data\Model
-{
-    public $table = 'country';
-    /*
-        public $apiFields = [
-            'read' => [
-                'id',
-                'name',
-                'sys_name',
-                'iso',
-                'iso3',
-                'numcode',
-                'phonecode',
-            ]
-        ];
-    */
-
-    /**
-     * @throws \atk4\core\Exception
-     */
-    protected function init()
-    {
-        parent::init();
-        $this->addField('name', ['actual'=>'nicename', 'required'=>true, 'type'=>'string']);
-        $this->addField('sys_name', ['actual'=>'name', 'system'=>true]);
-
-        $this->addField('iso', ['caption'=>'ISO', 'required'=>true, 'type'=>'string']);
-        $this->addField('iso3', ['caption'=>'ISO3', 'required'=>true, 'type'=>'string']);
-        $this->addField('numcode', ['caption'=>'ISO Numeric Code', 'type'=>'number', 'required'=>true]);
-        $this->addField('phonecode', ['caption'=>'Phone Prefix', 'type'=>'number']);
-
-        $this->onHook('beforeSave', function ($m) {
-            if (!$m['sys_name']) {
-                $m['sys_name'] = strtoupper($m['name']);
-            }
-        });
-
-        $this->onHook('validate', function ($m) {
-            $errors = [];
-
-            if (strlen($m['iso']) !== 2) {
-                $errors['iso'] = 'Must be exactly 2 characters';
-            }
-
-            if (strlen($m['iso3']) !== 3) {
-                $errors['iso3'] = 'Must be exactly 3 characters';
-            }
-
-            // look if name is unique
-            $c = clone $m;
-            $c->unload();
-            $c->tryLoadBy('name', $m['name']);
-            if ($c->loaded() && $c->id != $m->id) {
-                $errors['name'] = 'Country name must be unique';
-            }
-
-            return $errors;
-        });
     }
 }

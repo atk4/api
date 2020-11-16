@@ -2,20 +2,30 @@
 
 declare(strict_types=1);
 
+namespace atk4\api\tests\Model;
+
 use atk4\data\Model;
 
-include '../vendor/autoload.php';
-
-$api = new \atk4\api\Api();
-
-class Country extends \atk4\data\Model
+class Country extends Model
 {
     public $table = 'country';
+    /*
+        public $apiFields = [
+            'read' => [
+                'id',
+                'name',
+                'sys_name',
+                'iso',
+                'iso3',
+                'numcode',
+                'phonecode',
+            ]
+        ];
+    */
 
     protected function init(): void
     {
         parent::init();
-
         $this->addField('name', ['actual' => 'nicename', 'required' => true, 'type' => 'string']);
         $this->addField('sys_name', ['actual' => 'name', 'system' => true]);
 
@@ -30,7 +40,7 @@ class Country extends \atk4\data\Model
             }
         });
 
-        $this->onHook('validate', function (Model $m) {
+        $this->onHook('validate', function ($m) {
             $errors = [];
 
             if (strlen($m['iso']) !== 2) {
@@ -42,7 +52,9 @@ class Country extends \atk4\data\Model
             }
 
             // look if name is unique
-            $c = (clone $m)->unload()->tryLoadBy('name', $m['name']);
+            $c = clone $m;
+            $c->unload();
+            $c->tryLoadBy('name', $m['name']);
             if ($c->loaded() && $c->id !== $m->id) {
                 $errors['name'] = 'Country name must be unique';
             }
@@ -51,14 +63,3 @@ class Country extends \atk4\data\Model
         });
     }
 }
-session_start();
-$db = new \atk4\data\Persistence\SQL('mysql:dbname=atk4;host=localhost', 'root', '');
-
-$api->get('/ping/', function () {
-    return 'Hello, World';
-});
-$api->get('/ping/:hello', function ($hello) {
-    return "Hello, {$hello}";
-});
-
-$api->rest('/client', new Country($db));

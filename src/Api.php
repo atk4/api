@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace atk4\api;
 
 use atk4\data\Model;
@@ -46,9 +48,9 @@ class Api
      *
      * @param Request $request
      */
-    public function __construct(?Request $request = null)
+    public function __construct(Request $request = null)
     {
-        if (null !== $request) {
+        if ($request !== null) {
             $request->getBody()->rewind(); // reset pointer of request.
         }
         $this->request = $request ?: ServerRequestFactory::fromGlobals();
@@ -97,7 +99,7 @@ class Api
             }
 
             // pattern '*' accepts anything
-            if ($r == '*' && strlen($p)) {
+            if ($r === '*' && is_string($p) && strlen($p) > 0) {
                 continue;
             }
 
@@ -107,7 +109,7 @@ class Api
             }
 
             // parameters always start with ':', save in $vars and continue
-            if ($r[0] == ':' && strlen($p)) {
+            if ($r[0] === ':' && is_string($p) && strlen($p) > 0) {
                 // if value contains : then treat it as fieldname:value pair
                 // if value contains : and there is no fieldname (:ABC for example),
                 // then it will use model->title_field as fieldname
@@ -118,11 +120,12 @@ class Api
                 } else {
                     $this->_vars[] = urldecode($p);
                 }
+
                 continue;
             }
 
             // pattern '**' = good until the end
-            if ($r == '**') {
+            if ($r === '**') {
                 break;
             }
 
@@ -137,8 +140,6 @@ class Api
      *
      * @param callable $callable
      * @param array    $vars
-     *
-     * @throws \atk4\data\Exception
      */
     public function exec($callable, $vars = [])
     {
@@ -185,10 +186,6 @@ class Api
      *
      * Extend this method to implement your own field restrictions.
      *
-     * @param Model $m
-     *
-     * @throws \atk4\data\Exception
-     *
      * @return array
      */
     protected function exportModel(Model $m)
@@ -200,16 +197,12 @@ class Api
      * Load model by value.
      *
      * Value could be:
-     *  - string                : will be treated as ID value
      *  - array[fieldname,value]:
      *    - if fieldname is empty, then use model->title_field
      *    - if fieldname is not empty, then use it
+     *  - string|integer : will be treated as ID value
      *
-     * @param Model        $m
-     * @param string|array $value
-     *
-     * @throws \atk4\core\Exception
-     * @throws \atk4\data\Exception
+     * @param mixed $value
      *
      * @return Model
      */
@@ -217,7 +210,7 @@ class Api
     {
         // value is not ID
         if (is_array($value)) {
-            $field = empty($value[0]) ? $m->title_field : $value[0];
+            $field = $value[0] ?? $m->title_field;
 
             return $m->loadBy($field, $value[1]);
         }
@@ -233,10 +226,9 @@ class Api
      * It uses custom model property apiFields[$action] which should contain array of
      * allowed field names or null to allow all model fields.
      *
-     * @param Model  $m
      * @param string $action read|modify
      *
-     * @return null|array of field names
+     * @return array|null of field names
      */
     protected function getAllowedFields(Model $m, $action = 'read')
     {
@@ -296,6 +288,7 @@ class Api
         // for testing purposes there can be situations when emitter is disabled. then do nothing.
         if ($this->emitter) {
             $this->emitter->emit($this->response);
+
             exit;
         }
 
@@ -308,8 +301,6 @@ class Api
      *
      * @param string   $pattern
      * @param callable $callable
-     *
-     * @throws \atk4\data\Exception
      */
     public function get($pattern, $callable = null)
     {
@@ -323,8 +314,6 @@ class Api
      *
      * @param string   $pattern
      * @param callable $callable
-     *
-     * @throws \atk4\data\Exception
      */
     public function post($pattern, $callable = null)
     {
@@ -338,8 +327,6 @@ class Api
      *
      * @param string   $pattern
      * @param callable $callable
-     *
-     * @throws \atk4\data\Exception
      */
     public function patch($pattern, $callable = null)
     {
@@ -353,8 +340,6 @@ class Api
      *
      * @param string   $pattern
      * @param callable $callable
-     *
-     * @throws \atk4\data\Exception
      */
     public function put($pattern, $callable = null)
     {
@@ -368,8 +353,6 @@ class Api
      *
      * @param string   $pattern
      * @param callable $callable
-     *
-     * @throws \atk4\data\Exception
      */
     public function delete($pattern, $callable = null)
     {
@@ -384,15 +367,13 @@ class Api
      * @param string         $pattern
      * @param Model|callable $model
      * @param array          $methods Allowed methods (read|modify|delete). By default all are allowed
-     *
-     * @throws \atk4\data\Exception
      */
     public function rest($pattern, $model = null, $methods = ['read', 'modify', 'delete'])
     {
         $methods = array_map('strtolower', $methods);
 
         // GET all records
-        if (in_array('read', $methods)) {
+        if (in_array('read', $methods, true)) {
             $f = function (...$params) use ($model) {
                 if (is_callable($model)) {
                     $model = $this->call($model, $params);
@@ -404,7 +385,7 @@ class Api
         }
 
         // GET :id - one record
-        if (in_array('read', $methods)) {
+        if (in_array('read', $methods, true)) {
             $f = function (...$params) use ($model) {
                 $id = array_pop($params); // pop last element of args array, it's :id
 
@@ -424,7 +405,7 @@ class Api
         // POST :id - update one record
         // PATCH :id - update one record (same as POST :id)
         // PUT :id - update one record (same as POST :id)
-        if (in_array('modify', $methods)) {
+        if (in_array('modify', $methods, true)) {
             $f = function (...$params) use ($model) {
                 $id = array_pop($params); // pop last element of args array, it's :id
 
@@ -445,7 +426,7 @@ class Api
         }
 
         // POST - insert new record
-        if (in_array('modify', $methods)) {
+        if (in_array('modify', $methods, true)) {
             $f = function (...$params) use ($model) {
                 if (is_callable($model)) {
                     $model = $this->call($model, $params);
@@ -457,13 +438,14 @@ class Api
                 $model->onlyFields($this->getAllowedFields($model, 'read'));
 
                 $this->response_code = 201; // http code for created
+
                 return $model->get();
             };
             $this->post($pattern, $f);
         }
 
         // DELETE :id - delete one record
-        if (in_array('delete', $methods)) {
+        if (in_array('delete', $methods, true)) {
             $f = function (...$params) use ($model) {
                 $id = array_pop($params); // pop last element of args array, it's :id
 
@@ -482,8 +464,6 @@ class Api
 
     /**
      * Our own exception handling.
-     *
-     * @param \Exception $e
      */
     public function caughtException(\Exception $e)
     {
@@ -497,9 +477,9 @@ class Api
         $this->response = new JsonResponse(
             [
                 'error' => [
-                    'code'    => $e->getCode(),
+                    'code' => $e->getCode(),
                     'message' => $e->getMessage(),
-                    'args'    => $params,
+                    'args' => $params,
                 ],
             ],
             (int) $e->getCode() > 0 ? $e->getCode() : 500,
@@ -507,7 +487,9 @@ class Api
             $this->response_options
         );
 
+        //var_dump($this->response, $e->getMessage());
         (new SapiEmitter())->emit($this->response);
+
         exit;
     }
 }

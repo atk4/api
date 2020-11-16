@@ -1,12 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace atk4\api\tests;
 
-class PatternMatcherTest extends \atk4\core\PHPUnit_AgileTestCase
+use atk4\schema\PhpunitTestCase;
+
+class PatternMatcherTest extends PhpunitTestCase
 {
     public $api;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->api = new \atk4\api\Api();
     }
