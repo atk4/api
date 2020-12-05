@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace atk4\api\tests;
+namespace Atk4\Api\Tests;
 
-use atk4\schema\PhpunitTestCase;
+use Atk4\Schema\PhpunitTestCase;
 
 class PatternMatcherTest extends PhpunitTestCase
 {
@@ -12,7 +12,7 @@ class PatternMatcherTest extends PhpunitTestCase
 
     protected function setUp(): void
     {
-        $this->api = new \atk4\api\Api();
+        $this->api = new \Atk4\Api\Api();
     }
 
     public function assertMatch($pattern, $request)

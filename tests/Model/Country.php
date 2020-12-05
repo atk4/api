@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace atk4\api\tests\Model;
+namespace Atk4\Api\Tests\Model;
 
-use atk4\data\Model;
+use Atk4\Data\Model;
 
 class Country extends Model
 {

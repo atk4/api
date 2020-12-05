@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace atk4\api\tests;
+namespace Atk4\Api\Tests;
 
-use atk4\api\Api;
-use atk4\api\tests\Model\Country;
-use atk4\schema\PhpunitTestCase;
+use Atk4\Api\Api;
+use Atk4\Api\Tests\Model\Country;
+use Atk4\Schema\PhpunitTestCase;
 use Laminas\Diactoros\Request;
 
 class ApiTesterRestTest extends PhpunitTestCase

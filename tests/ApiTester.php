@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace atk4\api\tests;
+namespace Atk4\Api\Tests;
 
-use atk4\schema\PhpunitTestCase;
+use Atk4\Schema\PhpunitTestCase;
 use Laminas\Diactoros\Request;
 
 class ApiTester extends PhpunitTestCase
@@ -13,7 +13,7 @@ class ApiTester extends PhpunitTestCase
 
     protected function setUp(): void
     {
-        $this->api = new \atk4\api\Api();
+        $this->api = new \Atk4\Api\Api();
     }
 
     public function assertRequest($response, $method, $uri = '/', $data = null)
@@ -60,7 +60,7 @@ class ApiTester extends PhpunitTestCase
             $request->getBody()->write(json_encode($data));
         }
 
-        $api = new \atk4\api\Api($request);
+        $api = new \Atk4\Api\Api($request);
         $api->emitter = false; // don't emmit response
 
         $apiBuild($api);

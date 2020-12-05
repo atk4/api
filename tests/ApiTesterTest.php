@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace atk4\api\tests;
+namespace Atk4\Api\Tests;
 
 class ApiTesterTest extends ApiTester
 {

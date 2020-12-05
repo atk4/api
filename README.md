@@ -13,16 +13,16 @@ End-to-end implementation for your RESTful API and RPC. Provides a very simple m
 
 ## 1. Simple To Use
 
-Agile API strives to be very simple and work out of the box. Below is a minimal code to get your basic API going, put that into `v1.php` file then invoke `composer require atk4/api` :
+Agile API strives to be very simple and work out of the box. Below is a minimal code to get your basic API going, put that into `v1.php` file then invoke `composer require Atk4/Api` :
 
 ``` php
 include 'vendor/autoload.php';
 
-$api = new \atk4\api\Api();
+$api = new \Atk4\Api\Api();
 
 // Simple handling of GET request through a callback.
 $api->get('/ping', function() {
-   return 'Pong'; 
+   return 'Pong';
 });
 
 // Methods can accept arguments, and everything is type-safe.
@@ -87,9 +87,9 @@ To set up your API, simply create new RestAPI class instance and define routes. 
 
 ``` php
 require 'vendor/autoload.php';
-$app = new \atk4\api\Api();
+$app = new \Atk4\Api\Api();
 
-$db = \atk4\data\Persistence::connect($DSN);
+$db = \Atk4\Data\Persistence::connect($DSN);
 
 // Lets set our index page
 $app->get('/', function() {
@@ -98,11 +98,11 @@ $app->get('/', function() {
 
 // Getting access to POST data
 $app->post('/stats/:id', function($id, $data) {
-   return ['Received POST', 'id'=>$id, 'post_data'=>$data] 
+   return ['Received POST', 'id'=>$id, 'post_data'=>$data]
 });
 ```
 
-Calling methods such as `get()`, `post()` with a function call-back will register them and if URL matches a pattern, all the matching callbacks will be executed, that is, until some of them will present a return value. 
+Calling methods such as `get()`, `post()` with a function call-back will register them and if URL matches a pattern, all the matching callbacks will be executed, that is, until some of them will present a return value.
 
 Execution will occur as soon as the match is confirmed (to help with error display).
 
@@ -110,7 +110,7 @@ Technically this allows multiple call-backs to be matched:
 
 ``` php
 $app->get('/:method', function($method) {
-    // do something 
+    // do something
 });
 
 $app->get('/ping', function() {
@@ -224,10 +224,10 @@ Rate Limit support will limit number of requests which user (or IP) can make. It
 ``` php
 $app->authUser('/**', new User($db));
 
-$limit = new \atk4\api\Limit($db);
+$limit = new \Atk4\Api\Limit($db);
 $limit->addCondition('user_id', $app->user->id);
-  
-$app->get('/limits', function() use ($limit){ 
+
+$app->get('/limits', function() use ($limit){
     return $limit;
 });
 
@@ -239,8 +239,8 @@ $app->rest('/notifications', $app->user->ref('Notifications'));
 It's preferable to use rate limits with persistence such as Redis or Memcache:
 
 ``` php
-$cache = \atk4\data\Persistence\MemCache($conn);
-$limit = new \atk4\api\Limit($cache);
+$cache = \Atk4\Data\Persistence\MemCache($conn);
+$limit = new \Atk4\Api\Limit($cache);
 ```
 
 ### Deep logging
@@ -249,9 +249,9 @@ Agile Data already supports audit log, but with Agile API you can compliment tha
 
 ``` php
 $audit_id = $app->auditLog(
-  '/**', 
-  new \atk4\audit\Controller(
-    new \atk4\audit\model\AuditLog($db)
+  '/**',
+  new \Atk4\Audit\Controller(
+    new \Atk4\Audit\Model\AuditLog($db)
   )
 );
 ```
@@ -293,18 +293,18 @@ $db->addHook('afterAdd', function($o, $e) use ($user_id) {
 
 ``` php
 $app->map('/:resource/**', function(resource) use($app) {
-  
+
     // convert user-credit to UserCredit
     $class = preg_replace('/[^a-zA-Z]/', '', ucwords($resoprce));
-  
+
   	$object = $app->factory($class, null, 'Interface'); // Interface\UserCredit.php
-  
-  	return [$object, $app->method]; 
+
+  	return [$object, $app->method];
     // convert path to file
     // load file
     // create class instance
     // call method of that class
-  
+
     // TODO: think of some logical example here!!
 });
 ```
@@ -315,7 +315,7 @@ $app->map('/:resource/**', function(resource) use($app) {
 
 Agile API supports various get arguments.
 
--   `?sort=name,-age` specify columns to sort by. 
+-   `?sort=name,-age` specify columns to sort by.
 -   `?q=search`, will attempt to perform full-text search by phrase. (if supported by persistence)
 -   `?condition[name]=value`, conditioning, but can also use `?name=value`
 -   `?limit=20`, return only 20 results at a time.
@@ -323,24 +323,24 @@ Agile API supports various get arguments.
 -   `?only=name,surname` specify onlyFields
 -   `?ad={transformation}`, apply Agile Data transformation
 
-Handling of those arguments happens inside function `args()`. It's passed in a Model, so it will look at the GET arguments and perform the necessary changes. 
+Handling of those arguments happens inside function `args()`. It's passed in a Model, so it will look at the GET arguments and perform the necessary changes.
 
 ``` php
-function args(\atk4\data\Model $m) {
+function args(\Atk4\Data\Model $m) {
     if ($_GET['sort']) {
         $m->sortBy($_GET['sort']);
     }
-  
+
     if ($_GET['condition']) {
     	foreach($_GET['condition'] as $key=>$val) {
             $m->addCondition($key, $val);
         }
     }
-  
+
     if ($_GET['limit'] || $_GET['skip']) {
         $m->setLimit($_GET['limit']?:null, $_GET['skip']?:null);
     }
-  
+
     // etc. etc...
 }
 ```
@@ -386,7 +386,7 @@ Here are some examples
 It's possible to divert route group to a different App.
 
 ``` php
-$app = new \atk4\app\Api();
+$app = new \Atk4\Ui\App\Api();
 
 $app->group('/user/**', function($app2) {
    $app2->get('/test', function() {
@@ -395,4 +395,4 @@ $app->group('/user/**', function($app2) {
 });
 ```
 
-You can also divert 
+You can also divert

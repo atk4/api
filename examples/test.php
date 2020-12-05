@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use atk4\data\Model;
+use Atk4\Data\Model;
 
 include '../vendor/autoload.php';
 
-$api = new \atk4\api\Api();
+$api = new \Atk4\Api\Api();
 
-class Country extends \atk4\data\Model
+class Country extends \Atk4\Data\Model
 {
     public $table = 'country';
 
@@ -52,7 +52,7 @@ class Country extends \atk4\data\Model
     }
 }
 session_start();
-$db = new \atk4\data\Persistence\SQL('mysql:dbname=atk4;host=localhost', 'root', '');
+$db = new \Atk4\Data\Persistence\Sql('mysql:dbname=atk4;host=localhost', 'root', '');
 
 $api->get('/ping/', function () {
     return 'Hello, World';

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace atk4\api;
+namespace Atk4\Api;
 
-use atk4\data\Model;
+use Atk4\Data\Model;
 use Laminas\Diactoros\Request;
 use Laminas\Diactoros\Response\JsonResponse;
 use Laminas\Diactoros\ServerRequestFactory;
@@ -255,7 +255,7 @@ class Api
      * @return array
      */
     /* not used and maybe will not be needed too
-    protected function filterData(\atk4\data\Model $m, array $data)
+    protected function filterData(\Atk4\Data\Model $m, array $data)
     {
         $allowed = $this->getAllowedFields($m, 'modify');
 
@@ -468,7 +468,7 @@ class Api
     public function caughtException(\Exception $e)
     {
         $params = [];
-        if ($e instanceof \atk4\core\Exception) {
+        if ($e instanceof \Atk4\Core\Exception) {
             foreach ($e->getParams() as $key => $val) {
                 $params[$key] = $e->toString($val);
             }
