@@ -59,7 +59,7 @@ class ApiTesterRestTest extends PhpunitTestCase
         $response = $this->processRequest($request);
         $this->assertSame(201, $this->api->response_code);
         $this->assertSame([
-            'id' => '1',
+            'id' => 1,
             'name' => 'test',
             'sys_name' => 'test',
             'iso' => 'IT',
@@ -80,7 +80,7 @@ class ApiTesterRestTest extends PhpunitTestCase
 
         $response = $this->processRequest($request);
         $this->assertSame([
-            'id' => '1',
+            'id' => 1,
             'name' => 'test',
             'sys_name' => 'test',
             'iso' => 'IT',
@@ -101,7 +101,7 @@ class ApiTesterRestTest extends PhpunitTestCase
 
         $response = $this->processRequest($request);
         $this->assertSame([
-            'id' => '1',
+            'id' => 1,
             'name' => 'test',
             'sys_name' => 'test',
             'iso' => 'IT',
@@ -123,7 +123,7 @@ class ApiTesterRestTest extends PhpunitTestCase
         $response = $this->processRequest($request);
         $this->assertSame([
             0 => [
-                'id' => '1',
+                'id' => 1,
                 'nicename' => 'test',
                 'name' => 'test',
                 'iso' => 'IT',
@@ -151,7 +151,7 @@ class ApiTesterRestTest extends PhpunitTestCase
 
         $response = $this->processRequest($request);
         $this->assertSame([
-            'id' => '1',
+            'id' => 1,
             'name' => 'test modified',
             'sys_name' => 'test',
             'iso' => 'IT',
